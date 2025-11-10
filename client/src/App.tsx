@@ -12,6 +12,7 @@ import InstructorDashboard from "@/pages/instructor-dashboard";
 import Courses from "@/pages/courses";
 import CourseView from "@/pages/course-view";
 import CreateCourse from "@/pages/create-course";
+import InstructorCourseEdit from "@/pages/instructor-course-edit";
 import Profile from "@/pages/profile";
 import Settings from "@/pages/settings";
 import NotFound from "@/pages/not-found";
@@ -44,7 +45,7 @@ function Router() {
           <Route path="/instructor" component={InstructorDashboard} />
           <Route path="/instructor/courses" component={InstructorDashboard} />
           <Route path="/instructor/create-course" component={CreateCourse} />
-          <Route path="/instructor/course/:id" component={CourseView} />
+          <Route path="/instructor/course/:id" component={InstructorCourseEdit} />
           <Route path="/courses" component={Courses} />
           <Route path="/course/:id" component={CourseView} />
           <Route path="/my-courses" component={StudentDashboard} />
