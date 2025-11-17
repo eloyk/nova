@@ -46,6 +46,7 @@ function Router() {
           <Route path="/instructor/courses" component={InstructorDashboard} />
           <Route path="/instructor/create-course" component={CreateCourse} />
           <Route path="/instructor/course/:id" component={InstructorCourseEdit} />
+          <Route path="/instructor/courses/:id/edit" component={InstructorCourseEdit} />
           <Route path="/courses" component={Courses} />
           <Route path="/course/:id" component={CourseView} />
           <Route path="/my-courses" component={StudentDashboard} />
