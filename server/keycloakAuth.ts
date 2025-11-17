@@ -1,13 +1,7 @@
 import Keycloak from 'keycloak-connect';
 import { Request, Response, NextFunction } from 'express';
-import type { SessionData } from 'express-session';
-
-interface KeycloakSession extends SessionData {
-  'keycloak-token'?: string;
-}
 
 interface KeycloakRequest extends Request {
-  session: KeycloakSession;
   kauth?: {
     grant?: {
       access_token?: {
@@ -39,8 +33,14 @@ const keycloakConfig = {
   'bearer-only': false, // Permitir flujo de autenticación web
 };
 
-// Crear instancia de Keycloak
-export const keycloak = new Keycloak({}, keycloakConfig as any);
+// Variable para almacenar la instancia de Keycloak
+export let keycloak: Keycloak.Keycloak;
+
+// Función para inicializar Keycloak con session store
+export function initKeycloak(sessionStore: any) {
+  keycloak = new Keycloak({ store: sessionStore }, keycloakConfig as any);
+  return keycloak;
+}
 
 // Middleware para extraer información del usuario desde Keycloak
 export function extractUserFromKeycloak(req: KeycloakRequest, res: Response, next: NextFunction) {

@@ -122,7 +122,7 @@ export function AppSidebar() {
               </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton asChild data-testid="button-logout">
-                  <a href="/api/logout">
+                  <a href="/api/auth/logout">
                     <LogOut className="h-4 w-4" />
                     <span>Cerrar Sesión</span>
                   </a>

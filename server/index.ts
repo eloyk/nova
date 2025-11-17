@@ -1,8 +1,42 @@
 import express, { type Request, Response, NextFunction } from "express";
+import session from "express-session";
+import connectPgSimple from "connect-pg-simple";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { pool } from "./db";
+import { initKeycloak, extractUserFromKeycloak } from "./keycloakAuth";
 
 const app = express();
+
+// Setup PostgreSQL session store
+const PgSession = connectPgSimple(session);
+const sessionStore = new PgSession({
+  pool,
+  tableName: "sessions",
+});
+
+app.use(
+  session({
+    store: sessionStore,
+    secret: process.env.SESSION_SECRET || "nova-learn-secret-key",
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      secure: process.env.NODE_ENV === "production",
+      httpOnly: true,
+      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    },
+  })
+);
+
+// Initialize Keycloak with session store
+const keycloak = initKeycloak(sessionStore);
+
+// Setup Keycloak middleware
+app.use(keycloak.middleware());
+
+// Extract user information from Keycloak token
+app.use(extractUserFromKeycloak);
 
 declare module 'http' {
   interface IncomingMessage {

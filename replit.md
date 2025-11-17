@@ -33,7 +33,7 @@ Preferred communication style: Simple, everyday language.
 **Key UI Features**
 - Role-based routing (student vs instructor dashboards)
 - Collapsible sidebar navigation with mobile sheet drawer
-- Protected routes with automatic redirect to Replit Auth
+- Protected routes with automatic redirect to Keycloak authentication
 - Toast notifications for user feedback
 - Progress tracking UI with visual indicators
 
@@ -45,10 +45,14 @@ Preferred communication style: Simple, everyday language.
 - **Session Management** - PostgreSQL-backed sessions via connect-pg-simple
 
 **Authentication Strategy**
-- **Replit Auth (OpenID Connect)** - OAuth 2.0 flow with Passport.js strategy
-- **Session-based Authentication** - HTTP-only secure cookies
+- **Keycloak (OpenID Connect)** - OAuth 2.0 flow with keycloak-connect adapter
+- **Server**: https://keycloak.vimcashcorp.com
+- **Realm**: nova-learn
+- **Client**: nova-backend (confidential)
+- **Session-based Authentication** - HTTP-only secure cookies with PostgreSQL session store
 - **Role-based Authorization** - Middleware guards for student/instructor routes (`isAuthenticated`, `isInstructor`)
 - **User Provisioning** - Automatic user creation/update on first login via `upsertUser`
+- **Role Mapping** - Keycloak realm roles (instructor, admin, student) mapped to application roles
 
 **API Design Pattern**
 - RESTful endpoints organized by resource (`/api/courses`, `/api/enrollments`, etc.)
@@ -85,18 +89,16 @@ Preferred communication style: Simple, everyday language.
 
 ### File Storage Architecture
 
-**Object Storage Strategy**
-- **Google Cloud Storage** - Primary storage for course media and uploads
-- **Replit Sidecar Integration** - External account authentication via local endpoint
-- **Custom ACL System** - Object-level permissions with metadata-based policies
-- **Access Control** - Owner-based permissions with public/private visibility flags
-- **Upload Flow** - Client-side file selection → Server API → GCS with metadata
+**File Storage Strategy**
+- **Local Filesystem** - Videos stored in `/videos` directory on server
+- **Multer Middleware** - Handles multipart/form-data file uploads
+- **Authenticated Access** - Videos served via Express static middleware with authentication
+- **Upload Endpoint** - POST /api/upload/video accepts video files
+- **File Naming** - Unique filenames using timestamp + original filename
 
 **Supported File Types**
-- Video content for lessons (MP4, WebM)
-- Assignment submissions (documents, images)
-- Course thumbnails and media assets
-- Maximum file size: 500MB default (configurable)
+- Video content for lessons (MP4, WebM, AVI, MOV)
+- Maximum file size: 500MB (configurable via multer limits)
 
 ### API Structure
 
@@ -130,16 +132,20 @@ Preferred communication style: Simple, everyday language.
 ### Third-Party Services
 
 **Authentication**
-- **Replit Auth** - OAuth 2.0 OpenID Connect provider (issuer: replit.com/oidc)
-- **Passport.js** - Authentication middleware with openid-client strategy
+- **Keycloak** - Enterprise-grade OpenID Connect provider
+  - Server: https://keycloak.vimcashcorp.com
+  - Realm: nova-learn
+  - Client: nova-backend (confidential)
+- **keycloak-connect** - Official Node.js adapter for Keycloak integration
 
 **Database**
 - **Neon Database** - Serverless PostgreSQL (connection via DATABASE_URL env var)
 - **Drizzle ORM** - Type-safe database toolkit with PostgreSQL dialect
 
-**Object Storage**
-- **Google Cloud Storage** - Media file storage with GCS client SDK
-- **Replit Sidecar** - Local authentication proxy (http://127.0.0.1:1106)
+**File Storage**
+- **Local Filesystem** - Video storage in `/videos` directory
+- **Multer** - Multipart/form-data file upload handling
+- **File Serving** - Authenticated video access via Express static middleware
 
 ### Key NPM Packages
 
@@ -147,9 +153,9 @@ Preferred communication style: Simple, everyday language.
 - `express` - Web framework
 - `@neondatabase/serverless` - PostgreSQL client
 - `drizzle-orm` - ORM and query builder
-- `passport`, `openid-client` - Authentication
+- `keycloak-connect` - Keycloak authentication adapter
 - `express-session`, `connect-pg-simple` - Session management
-- `@google-cloud/storage` - GCS SDK
+- `multer` - File upload middleware
 
 **Frontend Core**
 - `react`, `react-dom` - UI library
@@ -175,6 +181,4 @@ Preferred communication style: Simple, everyday language.
 
 - `DATABASE_URL` - PostgreSQL connection string (Neon)
 - `SESSION_SECRET` - Express session encryption key
-- `ISSUER_URL` - Replit Auth issuer (default: https://replit.com/oidc)
-- `REPL_ID` - Replit environment identifier
-- `PUBLIC_OBJECT_SEARCH_PATHS` - Optional GCS public object paths
+- `KEYCLOAK_CLIENT_SECRET` - Keycloak client secret for nova-backend client

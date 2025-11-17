@@ -15,7 +15,7 @@ export default function Landing() {
             <span className="text-xl font-bold">NovaLearn</span>
           </div>
           <Button 
-            onClick={() => window.location.href = "/api/login"}
+            onClick={() => window.location.href = "/api/auth/login"}
             data-testid="button-login"
           >
             Iniciar Sesión
@@ -40,7 +40,7 @@ export default function Landing() {
               <div className="flex flex-wrap gap-4">
                 <Button 
                   size="lg" 
-                  onClick={() => window.location.href = "/api/login"}
+                  onClick={() => window.location.href = "/api/auth/login"}
                   className="group"
                   data-testid="button-get-started"
                 >
