@@ -8,6 +8,9 @@ import { initKeycloak, extractUserFromKeycloak } from "./keycloakAuth";
 
 const app = express();
 
+// Enable trust proxy to support HTTPS termination from Replit
+app.set('trust proxy', true);
+
 // Setup PostgreSQL session store
 const PgSession = connectPgSimple(session);
 const sessionStore = new PgSession({

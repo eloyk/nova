@@ -16,22 +16,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // AUTH ROUTES
   // ============================================
 
-  // Login route - initiate Keycloak authentication
-  app.get('/api/auth/login', (req, res, next) => {
-    // Si el usuario ya está autenticado, redirigir al home
-    if ((req as any).kauth?.grant) {
-      return res.redirect('/');
-    }
-    
-    // Construir URL de autenticación de Keycloak
-    const keycloakLoginUrl = `https://keycloak.vimcashcorp.com/realms/nova-learn/protocol/openid-connect/auth?client_id=nova-backend&redirect_uri=${encodeURIComponent(req.protocol + '://' + req.get('host') + '/api/auth/callback')}&response_type=code&scope=openid`;
-    
-    res.redirect(keycloakLoginUrl);
-  });
-
-  // Callback route after Keycloak authentication
-  app.get('/api/auth/callback', keycloak.protect(), (req, res) => {
-    // Usuario autenticado exitosamente, redirigir al home
+  // Login route - redirects to Keycloak login page  
+  app.get('/api/auth/login', keycloak.protect(), (req, res) => {
+    // Si llegamos aquí, el usuario ya está autenticado
     res.redirect('/');
   });
 
