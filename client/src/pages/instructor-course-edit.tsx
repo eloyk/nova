@@ -471,7 +471,12 @@ export default function InstructorCourseEdit() {
                       <FormItem>
                         <FormLabel>Duración (minutos)</FormLabel>
                         <FormControl>
-                          <Input {...field} type="number" data-testid="input-lesson-duration" />
+                          <Input 
+                            {...field} 
+                            type="number" 
+                            onChange={(e) => field.onChange(e.target.valueAsNumber || 0)}
+                            data-testid="input-lesson-duration" 
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -484,7 +489,12 @@ export default function InstructorCourseEdit() {
                       <FormItem>
                         <FormLabel>Orden</FormLabel>
                         <FormControl>
-                          <Input {...field} type="number" data-testid="input-lesson-order" />
+                          <Input 
+                            {...field} 
+                            type="number" 
+                            onChange={(e) => field.onChange(e.target.valueAsNumber || 0)}
+                            data-testid="input-lesson-order" 
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
