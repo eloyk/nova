@@ -24,12 +24,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Logout route
   app.get('/api/auth/logout', (req, res) => {
+    // Construir la URL de redirect después del logout
+    const protocol = req.protocol;
+    const host = req.get('host');
+    const redirectUri = `${protocol}://${host}/`;
+    
+    // Destruir la sesión local
     req.session?.destroy((err) => {
       if (err) {
         console.error('Session destruction error:', err);
       }
     });
-    const logoutUrl = `https://keycloak.vimcashcorp.com/realms/nova-learn/protocol/openid-connect/logout`;
+    
+    // Redirigir a Keycloak logout con redirect de vuelta a la app
+    const logoutUrl = `https://keycloak.vimcashcorp.com/realms/nova-learn/protocol/openid-connect/logout?post_logout_redirect_uri=${encodeURIComponent(redirectUri)}&client_id=nova-backend`;
     res.redirect(logoutUrl);
   });
 
