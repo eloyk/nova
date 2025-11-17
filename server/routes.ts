@@ -6,8 +6,9 @@ import { insertCourseSchema, insertModuleSchema, insertLessonSchema, insertEnrol
 import { db } from "./db";
 import { courses, modules, lessons, enrollments, lessonProgress as lessonProgressTable, quizzes, quizQuestions } from "@shared/schema";
 import { eq, and, sql } from "drizzle-orm";
-import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
-import { ObjectPermission } from "./objectAcl";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication middleware
@@ -512,45 +513,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ============================================
-  // OBJECT STORAGE ROUTES
+  // FILE UPLOAD ROUTES (Local Filesystem)
   // ============================================
 
-  // Get upload URL for file uploads (videos, assignments, etc.)
-  app.post("/api/objects/upload", isAuthenticated, async (req, res) => {
-    try {
-      const objectStorageService = new ObjectStorageService();
-      const uploadURL = await objectStorageService.getObjectEntityUploadURL();
-      res.json({ uploadURL });
-    } catch (error) {
-      console.error("Error getting upload URL:", error);
-      res.status(500).json({ message: "Failed to get upload URL" });
+  // Configure multer for file uploads
+  const videosDir = path.join(process.cwd(), "videos");
+  
+  // Ensure videos directory exists
+  if (!fs.existsSync(videosDir)) {
+    fs.mkdirSync(videosDir, { recursive: true });
+  }
+
+  const multerStorage = multer.diskStorage({
+    destination: (req, file, cb) => {
+      cb(null, videosDir);
+    },
+    filename: (req, file, cb) => {
+      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+      const ext = path.extname(file.originalname);
+      cb(null, file.fieldname + '-' + uniqueSuffix + ext);
     }
   });
 
-  // Serve private objects with ACL checks (wildcard to capture full multi-segment paths)
-  app.get("/objects/*", isAuthenticated, async (req: any, res) => {
-    const userId = req.user.claims.sub;
-    const objectStorageService = new ObjectStorageService();
+  const upload = multer({ 
+    storage: multerStorage,
+    limits: { fileSize: 500 * 1024 * 1024 } // 500MB max
+  });
+
+  // Upload file endpoint
+  app.post("/api/upload/video", isAuthenticated, isInstructor, upload.single('video'), async (req: any, res) => {
     try {
-      // Reconstruct full path: Express strips /objects/ prefix, so rebuild it from params[0]
-      const objectPath = `/objects/${req.params[0]}`;
-      const objectFile = await objectStorageService.getObjectEntityFile(objectPath);
-      const canAccess = await objectStorageService.canAccessObjectEntity({
-        objectFile,
-        userId: userId,
-        requestedPermission: ObjectPermission.READ,
-      });
-      if (!canAccess) {
-        return res.sendStatus(401);
+      if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded" });
       }
-      objectStorageService.downloadObject(objectFile, res);
+      
+      // Return the URL path to access the video
+      const videoUrl = `/videos/${req.file.filename}`;
+      res.json({ videoUrl });
     } catch (error) {
-      console.error("Error checking object access:", error);
-      if (error instanceof ObjectNotFoundError) {
-        return res.sendStatus(404);
-      }
-      return res.sendStatus(500);
+      console.error("Error uploading video:", error);
+      res.status(500).json({ message: "Failed to upload video" });
     }
+  });
+
+  // Serve video files (with authentication)
+  app.use('/videos', isAuthenticated, (req, res, next) => {
+    const videoPath = path.join(videosDir, path.basename(req.path));
+    
+    if (!fs.existsSync(videoPath)) {
+      return res.status(404).json({ message: "Video not found" });
+    }
+    
+    res.sendFile(videoPath);
   });
 
   // Update lesson video URL after upload
@@ -573,36 +587,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Forbidden" });
       }
 
-      const objectStorageService = new ObjectStorageService();
-      const videoPath = await objectStorageService.trySetObjectEntityAclPolicy(
-        req.body.videoUrl,
-        {
-          owner: userId,
-          visibility: "public",
-        },
-      );
-
-      const updated = await storage.updateLesson(req.params.id, { videoUrl: videoPath });
+      const updated = await storage.updateLesson(req.params.id, { videoUrl: req.body.videoUrl });
       res.json(updated);
     } catch (error) {
       console.error("Error updating lesson video:", error);
       res.status(500).json({ message: "Failed to update lesson video" });
-    }
-  });
-
-  // Serve public objects
-  app.get("/public-objects/:filePath(*)", async (req, res) => {
-    const filePath = req.params.filePath;
-    const objectStorageService = new ObjectStorageService();
-    try {
-      const file = await objectStorageService.searchPublicObject(filePath);
-      if (!file) {
-        return res.status(404).json({ error: "File not found" });
-      }
-      objectStorageService.downloadObject(file, res);
-    } catch (error) {
-      console.error("Error searching for public object:", error);
-      return res.status(500).json({ error: "Internal server error" });
     }
   });
 

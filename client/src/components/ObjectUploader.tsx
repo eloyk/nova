@@ -48,11 +48,11 @@ export function ObjectUploader({
     setProgress(0);
 
     try {
-      // Get presigned upload URL
-      const response: any = await apiRequest("POST", "/api/objects/upload", {});
-      const uploadURL = response.uploadURL as string;
+      // Create FormData for file upload
+      const formData = new FormData();
+      formData.append('video', file);
 
-      // Upload file using presigned URL
+      // Upload file using XMLHttpRequest for progress tracking
       const xhr = new XMLHttpRequest();
 
       xhr.upload.addEventListener("progress", (e) => {
@@ -64,8 +64,9 @@ export function ObjectUploader({
 
       xhr.addEventListener("load", () => {
         if (xhr.status === 200) {
+          const response = JSON.parse(xhr.responseText);
           setSuccess(true);
-          onUploadComplete(uploadURL);
+          onUploadComplete(response.videoUrl);
           toast({
             title: "¡Archivo cargado!",
             description: "El archivo se ha subido exitosamente",
@@ -91,9 +92,8 @@ export function ObjectUploader({
         setUploading(false);
       });
 
-      xhr.open("PUT", uploadURL);
-      xhr.setRequestHeader("Content-Type", file.type || "application/octet-stream");
-      xhr.send(file);
+      xhr.open("POST", "/api/upload/video");
+      xhr.send(formData);
     } catch (err) {
       console.error("Upload error:", err);
       setError("No se pudo iniciar la carga");
