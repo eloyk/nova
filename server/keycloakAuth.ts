@@ -43,12 +43,14 @@ export function initKeycloak(sessionStore: any) {
 }
 
 // Middleware para extraer información del usuario desde Keycloak
-export function extractUserFromKeycloak(req: KeycloakRequest, res: Response, next: NextFunction) {
+export async function extractUserFromKeycloak(req: KeycloakRequest, res: Response, next: NextFunction) {
   if (req.kauth?.grant?.access_token?.content) {
     const token = req.kauth.grant.access_token.content;
     
+    // Información básica del token de Keycloak
     (req as any).user = {
-      id: token.sub || '',
+      keycloakId: token.sub || '', // Guardar el ID de Keycloak por si se necesita
+      id: token.sub || '', // Por defecto usar el ID de Keycloak
       email: token.email || '',
       firstName: token.given_name || '',
       lastName: token.family_name || '',
@@ -91,4 +93,35 @@ export function isInstructor(req: Request, res: Response, next: NextFunction) {
 // Función para obtener el usuario actual desde el request
 export function getCurrentUser(req: Request) {
   return (req as any).user || null;
+}
+
+// Función para obtener el ID del usuario de la base de datos
+export async function getDatabaseUserId(req: Request): Promise<string | null> {
+  const user = (req as any).user;
+  if (!user || !user.email) {
+    return null;
+  }
+  
+  // Si ya tenemos el dbUserId guardado en el request, usarlo
+  if ((req as any).dbUserId) {
+    return (req as any).dbUserId;
+  }
+  
+  // Si no, buscarlo en la base de datos por email
+  const { db } = await import('./db');
+  const { users } = await import('@shared/schema');
+  const { eq } = await import('drizzle-orm');
+  
+  const [dbUser] = await db
+    .select()
+    .from(users)
+    .where(eq(users.email, user.email));
+  
+  if (dbUser) {
+    // Guardar en el request para no tener que buscarlo de nuevo
+    (req as any).dbUserId = dbUser.id;
+    return dbUser.id;
+  }
+  
+  return null;
 }

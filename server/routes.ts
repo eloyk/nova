@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { keycloak, isAuthenticated, isInstructor, getCurrentUser } from "./keycloakAuth";
+import { keycloak, isAuthenticated, isInstructor, getCurrentUser, getDatabaseUserId } from "./keycloakAuth";
 import { insertCourseSchema, insertModuleSchema, insertLessonSchema, insertEnrollmentSchema, insertLessonProgressSchema, insertQuizSchema, insertQuizQuestionSchema, insertQuizAttemptSchema, insertAssignmentSchema, insertAssignmentSubmissionSchema } from "@shared/schema";
 import { db } from "./db";
 import { courses, modules, lessons, enrollments, lessonProgress as lessonProgressTable, quizzes, quizQuestions } from "@shared/schema";
@@ -58,6 +58,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         role: user.roles.includes('instructor') || user.roles.includes('admin') ? 'instructor' : 'student',
       });
 
+      // Actualizar el objeto de usuario en el request con el ID de la base de datos
+      (req as any).user = {
+        ...user,
+        id: dbUser.id, // Usar el ID de la base de datos
+        role: dbUser.role,
+      };
+
       res.json(dbUser);
     } catch (error) {
       console.error("Error fetching user:", error);
@@ -84,7 +91,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get course by ID with modules and lessons
   app.get("/api/courses/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = getCurrentUser(req)?.id;
+      const userId = await getDatabaseUserId(req);
+      if (!userId) {
+        return res.status(401).json({ message: "Usuario no encontrado en la base de datos" });
+      }
       const course = await storage.getCourse(req.params.id);
       
       if (!course) {
@@ -127,7 +137,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create course (instructor only)
   app.post("/api/courses", isAuthenticated, isInstructor, async (req: any, res) => {
     try {
-      const userId = getCurrentUser(req)?.id;
+      const userId = await getDatabaseUserId(req);
+      if (!userId) {
+        return res.status(401).json({ message: "Usuario no encontrado en la base de datos" });
+      }
       const courseData = insertCourseSchema.parse({ ...req.body, instructorId: userId });
       const course = await storage.createCourse(courseData);
       res.status(201).json(course);
@@ -140,7 +153,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Update course (instructor only)
   app.put("/api/courses/:id", isAuthenticated, isInstructor, async (req: any, res) => {
     try {
-      const userId = getCurrentUser(req)?.id;
+      const userId = await getDatabaseUserId(req);
+      if (!userId) {
+        return res.status(401).json({ message: "Usuario no encontrado en la base de datos" });
+      }
       const course = await storage.getCourse(req.params.id);
       
       if (!course) {
@@ -162,7 +178,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get instructor's courses
   app.get("/api/instructor/courses", isAuthenticated, isInstructor, async (req: any, res) => {
     try {
-      const userId = getCurrentUser(req)?.id;
+      const userId = await getDatabaseUserId(req);
+      if (!userId) {
+        return res.status(401).json({ message: "Usuario no encontrado en la base de datos" });
+      }
       const courses = await storage.getCoursesByInstructor(userId);
       res.json(courses);
     } catch (error) {
@@ -174,7 +193,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get instructor stats
   app.get("/api/instructor/stats", isAuthenticated, isInstructor, async (req: any, res) => {
     try {
-      const userId = getCurrentUser(req)?.id;
+      const userId = await getDatabaseUserId(req);
+      if (!userId) {
+        return res.status(401).json({ message: "Usuario no encontrado en la base de datos" });
+      }
       const instructorCourses = await storage.getCoursesByInstructor(userId);
       
       const totalStudents = new Set();
@@ -212,7 +234,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/modules", isAuthenticated, isInstructor, async (req: any, res) => {
     try {
-      const userId = getCurrentUser(req)?.id;
+      const userId = await getDatabaseUserId(req);
+      if (!userId) {
+        return res.status(401).json({ message: "Usuario no encontrado en la base de datos" });
+      }
       const moduleData = insertModuleSchema.parse(req.body);
       
       const course = await storage.getCourse(moduleData.courseId);
@@ -234,7 +259,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/lessons", isAuthenticated, isInstructor, async (req: any, res) => {
     try {
-      const userId = getCurrentUser(req)?.id;
+      const userId = await getDatabaseUserId(req);
+      if (!userId) {
+        return res.status(401).json({ message: "Usuario no encontrado en la base de datos" });
+      }
       const lessonData = insertLessonSchema.parse(req.body);
       
       const module = await storage.getModule(lessonData.moduleId);
@@ -262,7 +290,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get user's enrollments with course data
   app.get("/api/enrollments/my-courses", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = getCurrentUser(req)?.id;
+      const userId = await getDatabaseUserId(req);
+      if (!userId) {
+        return res.status(401).json({ message: "Usuario no encontrado en la base de datos" });
+      }
       const userEnrollments = await storage.getEnrollmentsByUser(userId);
       
       const enrollmentsWithCourses = await Promise.all(
@@ -282,7 +313,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get user's enrolled course IDs
   app.get("/api/enrollments/course-ids", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = getCurrentUser(req)?.id;
+      const userId = await getDatabaseUserId(req);
+      if (!userId) {
+        return res.status(401).json({ message: "Usuario no encontrado en la base de datos" });
+      }
       const userEnrollments = await storage.getEnrollmentsByUser(userId);
       const courseIds = userEnrollments.map(e => e.courseId);
       res.json(courseIds);
@@ -295,7 +329,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get enrollment for a specific course
   app.get("/api/enrollments/course/:courseId", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = getCurrentUser(req)?.id;
+      const userId = await getDatabaseUserId(req);
+      if (!userId) {
+        return res.status(401).json({ message: "Usuario no encontrado en la base de datos" });
+      }
       const enrollment = await storage.getEnrollmentByUserAndCourse(userId, req.params.courseId);
       res.json(enrollment || null);
     } catch (error) {
@@ -307,7 +344,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create enrollment
   app.post("/api/enrollments", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = getCurrentUser(req)?.id;
+      const userId = await getDatabaseUserId(req);
+      if (!userId) {
+        return res.status(401).json({ message: "Usuario no encontrado en la base de datos" });
+      }
       const enrollmentData = insertEnrollmentSchema.parse({ ...req.body, userId });
 
       // Check if already enrolled
@@ -327,7 +367,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get student stats
   app.get("/api/students/stats", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = getCurrentUser(req)?.id;
+      const userId = await getDatabaseUserId(req);
+      if (!userId) {
+        return res.status(401).json({ message: "Usuario no encontrado en la base de datos" });
+      }
       const userEnrollments = await storage.getEnrollmentsByUser(userId);
       
       const totalProgress = userEnrollments.reduce((sum, e) => sum + e.progressPercentage, 0);
@@ -350,7 +393,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get lesson progress for a course
   app.get("/api/lesson-progress/course/:courseId", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = getCurrentUser(req)?.id;
+      const userId = await getDatabaseUserId(req);
+      if (!userId) {
+        return res.status(401).json({ message: "Usuario no encontrado en la base de datos" });
+      }
       const courseModules = await storage.getModulesByCourse(req.params.courseId);
       
       const allLessons = [];
@@ -374,7 +420,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create or update lesson progress
   app.post("/api/lesson-progress", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = getCurrentUser(req)?.id;
+      const userId = await getDatabaseUserId(req);
+      if (!userId) {
+        return res.status(401).json({ message: "Usuario no encontrado en la base de datos" });
+      }
       const progressData = insertLessonProgressSchema.parse({ ...req.body, userId });
       
       const lessonProg = await storage.upsertLessonProgress(progressData);
@@ -421,7 +470,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/quizzes", isAuthenticated, isInstructor, async (req: any, res) => {
     try {
-      const userId = getCurrentUser(req)?.id;
+      const userId = await getDatabaseUserId(req);
+      if (!userId) {
+        return res.status(401).json({ message: "Usuario no encontrado en la base de datos" });
+      }
       const quizData = insertQuizSchema.parse(req.body);
       
       const lesson = await storage.getLesson(quizData.lessonId);
@@ -449,7 +501,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/quiz-questions", isAuthenticated, isInstructor, async (req: any, res) => {
     try {
-      const userId = getCurrentUser(req)?.id;
+      const userId = await getDatabaseUserId(req);
+      if (!userId) {
+        return res.status(401).json({ message: "Usuario no encontrado en la base de datos" });
+      }
       const questionData = insertQuizQuestionSchema.parse(req.body);
       
       const quiz = await storage.getQuiz(questionData.quizId);
@@ -477,7 +532,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/quiz-attempts", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = getCurrentUser(req)?.id;
+      const userId = await getDatabaseUserId(req);
+      if (!userId) {
+        return res.status(401).json({ message: "Usuario no encontrado en la base de datos" });
+      }
       const attemptData = insertQuizAttemptSchema.parse({ ...req.body, userId });
       
       const attempt = await storage.createQuizAttempt(attemptData);
@@ -494,7 +552,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/assignments", isAuthenticated, isInstructor, async (req: any, res) => {
     try {
-      const userId = getCurrentUser(req)?.id;
+      const userId = await getDatabaseUserId(req);
+      if (!userId) {
+        return res.status(401).json({ message: "Usuario no encontrado en la base de datos" });
+      }
       const assignmentData = insertAssignmentSchema.parse(req.body);
       
       const lesson = await storage.getLesson(assignmentData.lessonId);
@@ -522,7 +583,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/assignment-submissions", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = getCurrentUser(req)?.id;
+      const userId = await getDatabaseUserId(req);
+      if (!userId) {
+        return res.status(401).json({ message: "Usuario no encontrado en la base de datos" });
+      }
       const submissionData = insertAssignmentSubmissionSchema.parse({ ...req.body, userId });
       
       const submission = await storage.createAssignmentSubmission(submissionData);
@@ -606,7 +670,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Update lesson video URL after upload
   app.put("/api/lessons/:id/video", isAuthenticated, isInstructor, async (req: any, res) => {
     try {
-      const userId = getCurrentUser(req)?.id;
+      const userId = await getDatabaseUserId(req);
+      if (!userId) {
+        return res.status(401).json({ message: "Usuario no encontrado en la base de datos" });
+      }
       const lesson = await storage.getLesson(req.params.id);
       
       if (!lesson) {
