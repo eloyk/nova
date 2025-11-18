@@ -389,7 +389,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Convert seconds to hours (don't round to preserve precision for small values)
       const totalHours = totalSeconds / 3600;
 
+      // Count completed courses (progress = 100%)
+      const completedCourses = userEnrollments.filter(e => e.progressPercentage >= 100).length;
+
       res.json({
+        totalCourses: userEnrollments.length,
+        completedCourses,
         totalHours,
         averageProgress,
       });

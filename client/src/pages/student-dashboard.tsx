@@ -13,6 +13,8 @@ interface EnrollmentWithCourse extends Enrollment {
 }
 
 interface StudentStats {
+  totalCourses: number;
+  completedCourses: number;
   totalHours: number;
   averageProgress: number;
 }
@@ -56,9 +58,8 @@ export default function StudentDashboard() {
     );
   }
 
-  const inProgressCourses = enrollments?.filter(e => !e.completedAt && e.progressPercentage > 0) || [];
+  const inProgressCourses = enrollments?.filter(e => e.progressPercentage > 0 && e.progressPercentage < 100) || [];
   const notStartedCourses = enrollments?.filter(e => e.progressPercentage === 0) || [];
-  const completedCourses = enrollments?.filter(e => e.completedAt) || [];
 
   return (
     <div className="space-y-8">
@@ -99,7 +100,7 @@ export default function StudentDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold" data-testid="text-completed-courses">
-              {completedCourses.length}
+              {stats?.completedCourses || 0}
             </div>
             <p className="text-xs text-muted-foreground">
               Cursos finalizados
@@ -122,30 +123,17 @@ export default function StudentDashboard() {
                 const seconds = totalSeconds % 60;
                 
                 if (hours >= 1) {
-                  return `${hours.toFixed(1)}`;
+                  return `${hours.toFixed(1)}h`;
                 } else if (minutes >= 1) {
-                  return `${minutes}`;
+                  return `${minutes}m`;
                 } else if (seconds > 0) {
-                  return `${seconds}`;
+                  return `${seconds}s`;
                 }
-                return "0";
+                return "0s";
               })()}
             </div>
             <p className="text-xs text-muted-foreground">
-              {(() => {
-                const hours = stats?.totalHours || 0;
-                const totalSeconds = Math.round(hours * 3600);
-                const minutes = Math.floor(totalSeconds / 60);
-                
-                if (hours >= 1) {
-                  return "Horas este mes";
-                } else if (minutes >= 1) {
-                  return "Minutos este mes";
-                } else if (totalSeconds > 0) {
-                  return "Segundos este mes";
-                }
-                return "Este mes";
-              })()}
+              Total de tiempo
             </p>
           </CardContent>
         </Card>
