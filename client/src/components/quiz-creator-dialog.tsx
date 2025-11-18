@@ -146,7 +146,7 @@ export function QuizCreatorDialog({ open, onOpenChange, lessonId, courseId }: Qu
 
       // Invalidate cache to refresh quiz lists
       queryClient.invalidateQueries({ queryKey: ["/api/courses", courseId] });
-      queryClient.invalidateQueries({ queryKey: ["/api/quizzes", "lesson", lessonId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/quizzes/lesson", lessonId] });
       
       // Show success message
       toast({

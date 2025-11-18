@@ -47,28 +47,18 @@ export function QuizTaker({ quizId, onComplete }: QuizTakerProps) {
     staleTime: 5 * 60 * 1000, // 5 minutes - reduce unnecessary refetches
   });
 
+  const markLessonCompleteMutation = useMutation({
+    mutationFn: async (lessonId: string) => {
+      return await apiRequest("POST", "/api/lesson-progress", {
+        lessonId,
+        completed: true,
+      });
+    },
+  });
+
   const submitQuizMutation = useMutation({
     mutationFn: async (data: any) => {
       return await apiRequest("POST", "/api/quiz-attempts", data);
-    },
-    onSuccess: (result: any) => {
-      setAttemptResult(result);
-      setShowResults(true);
-      // Only invalidate quiz attempts, not quiz metadata or questions
-      queryClient.invalidateQueries({ queryKey: ["/api/quiz-attempts"] });
-      toast({
-        title: result.passed ? "¡Aprobado!" : "No aprobado",
-        description: `Obtuviste ${result.score}% en el quiz`,
-        variant: result.passed ? "default" : "destructive",
-      });
-      if (onComplete) onComplete();
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message || "No se pudo enviar el quiz",
-        variant: "destructive",
-      });
     },
   });
 
@@ -131,7 +121,7 @@ export function QuizTaker({ quizId, onComplete }: QuizTakerProps) {
     }
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!quiz || !questions) return;
 
     const correctAnswers = questions.reduce((count, question) => {
@@ -144,12 +134,56 @@ export function QuizTaker({ quizId, onComplete }: QuizTakerProps) {
     const passPercentage = typeof quiz.passPercentage === 'number' ? quiz.passPercentage : 70;
     const passed = score >= passPercentage;
 
-    submitQuizMutation.mutate({
-      quizId,
-      answers,
-      score,
-      passed,
-    });
+    try {
+      // Submit quiz attempt
+      const attemptResponse = await submitQuizMutation.mutateAsync({
+        quizId,
+        answers,
+        score,
+        passed,
+      });
+      
+      // Parse the response
+      const result = await attemptResponse.json();
+      setAttemptResult(result);
+      setShowResults(true);
+      
+      // If passed, mark lesson as completed
+      if (result.passed && quiz.lessonId) {
+        try {
+          await markLessonCompleteMutation.mutateAsync(quiz.lessonId);
+          // Invalidate progress queries
+          queryClient.invalidateQueries({ queryKey: ["/api/lesson-progress"] });
+          queryClient.invalidateQueries({ queryKey: ["/api/students/stats"] });
+          queryClient.invalidateQueries({ queryKey: ["/api/enrollments"] });
+        } catch (error) {
+          console.error("Error marking lesson complete:", error);
+          toast({
+            title: "Advertencia",
+            description: "El quiz fue enviado pero hubo un problema actualizando el progreso",
+            variant: "default",
+          });
+        }
+      }
+      
+      // Invalidate quiz attempts
+      queryClient.invalidateQueries({ queryKey: ["/api/quiz-attempts"] });
+      
+      // Show success toast
+      toast({
+        title: result.passed ? "¡Aprobado!" : "No aprobado",
+        description: `Obtuviste ${result.score}% en el quiz`,
+        variant: result.passed ? "default" : "destructive",
+      });
+      
+      if (onComplete) onComplete();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo enviar el quiz",
+        variant: "destructive",
+      });
+    }
   };
 
   if (showResults && attemptResult && questions) {

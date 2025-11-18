@@ -436,23 +436,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const enrollment = await storage.getEnrollmentByUserAndCourse(userId, module.courseId);
           if (enrollment) {
             const courseModules = await storage.getModulesByCourse(module.courseId);
-            let totalLessons = 0;
+            
+            // Get all lessons in the course
+            const allCourseLessons = [];
             for (const mod of courseModules) {
               const modLessons = await storage.getLessonsByModule(mod.id);
-              totalLessons += modLessons.length;
+              allCourseLessons.push(...modLessons);
             }
-
+            
+            const totalLessons = allCourseLessons.length;
+            
+            // Get user progress and filter for completed lessons in this course
             const userProgress = await storage.getLessonProgressByUser(userId);
-            const completedInCourse = userProgress.filter(p => {
-              const lessonIds = [];
-              for (const mod of courseModules) {
-                storage.getLessonsByModule(mod.id).then(lessons => lessonIds.push(...lessons.map(l => l.id)));
-              }
-              return p.completed && lessonIds.includes(p.lessonId);
-            });
+            const completedInCourse = userProgress.filter(p => 
+              p.completed && allCourseLessons.some(l => l.id === p.lessonId)
+            );
 
             const progressPercentage = totalLessons > 0 ? Math.round((completedInCourse.length / totalLessons) * 100) : 0;
             await storage.updateEnrollment(enrollment.id, { progressPercentage });
+            
+            console.log(`Updated enrollment progress: ${completedInCourse.length}/${totalLessons} lessons completed (${progressPercentage}%)`);
           }
         }
       }
@@ -548,7 +551,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/quizzes/lesson/:lessonId", isAuthenticated, async (req, res) => {
     try {
       const quizzes = await storage.getQuizzesByLesson(req.params.lessonId);
-      res.json(quizzes);
+      
+      // Load questions for each quiz
+      const quizzesWithQuestions = await Promise.all(
+        quizzes.map(async (quiz) => {
+          const questions = await storage.getQuizQuestions(quiz.id);
+          // Sort questions by order
+          const sortedQuestions = questions.sort((a, b) => a.order - b.order);
+          return {
+            ...quiz,
+            questions: sortedQuestions,
+          };
+        })
+      );
+      
+      res.json(quizzesWithQuestions);
     } catch (error) {
       console.error("Error fetching lesson quizzes:", error);
       res.status(500).json({ message: "Failed to fetch quizzes" });
