@@ -6,12 +6,14 @@ import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CheckCircle2, Circle, PlayCircle, FileText, ClipboardCheck, Clock, ArrowLeft } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useEffect, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
+import { QuizTaker } from "@/components/quiz-taker";
 import type { Course, Module, Lesson } from "@shared/schema";
 
 interface ModuleWithLessons extends Module {
@@ -41,6 +43,19 @@ export default function CourseView() {
   const { data: lessonProgress } = useQuery<string[]>({
     queryKey: ["/api/lesson-progress/course", id],
     enabled: isAuthenticated && !!id,
+  });
+
+  const { data: lessonQuizzes } = useQuery<any[]>({
+    queryKey: ["/api/quizzes/lesson", selectedLesson?.id],
+    queryFn: async () => {
+      if (!selectedLesson?.id) return [];
+      const res = await fetch(`/api/quizzes/lesson/${selectedLesson.id}`, {
+        credentials: "include",
+      });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: isAuthenticated && !!selectedLesson?.id,
   });
 
   const markCompleteMutation = useMutation({
@@ -211,6 +226,37 @@ export default function CourseView() {
                   </div>
                 </CardContent>
               </Card>
+
+              {/* Quizzes Section */}
+              {lessonQuizzes && lessonQuizzes.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center gap-2">
+                      <ClipboardCheck className="h-5 w-5 text-primary" />
+                      <CardTitle>Evaluaciones</CardTitle>
+                    </div>
+                    <CardDescription>
+                      Completa los quizzes para evaluar tu conocimiento
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Tabs defaultValue={lessonQuizzes[0]?.id} className="w-full">
+                      <TabsList className="grid w-full" style={{ gridTemplateColumns: `repeat(${lessonQuizzes.length}, 1fr)` }}>
+                        {lessonQuizzes.map((quiz: any, index: number) => (
+                          <TabsTrigger key={quiz.id} value={quiz.id} data-testid={`tab-quiz-${index}`}>
+                            {quiz.title}
+                          </TabsTrigger>
+                        ))}
+                      </TabsList>
+                      {lessonQuizzes.map((quiz: any) => (
+                        <TabsContent key={quiz.id} value={quiz.id} className="mt-6">
+                          <QuizTaker quizId={quiz.id} />
+                        </TabsContent>
+                      ))}
+                    </Tabs>
+                  </CardContent>
+                </Card>
+              )}
             </>
           ) : (
             <Card className="p-12">

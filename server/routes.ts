@@ -530,6 +530,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get quizzes for a lesson
+  app.get("/api/quizzes/lesson/:lessonId", isAuthenticated, async (req, res) => {
+    try {
+      const quizzes = await storage.getQuizzesByLesson(req.params.lessonId);
+      res.json(quizzes);
+    } catch (error) {
+      console.error("Error fetching lesson quizzes:", error);
+      res.status(500).json({ message: "Failed to fetch quizzes" });
+    }
+  });
+
   // Get quizzes for a course
   app.get("/api/courses/:courseId/quizzes", isAuthenticated, async (req, res) => {
     try {
