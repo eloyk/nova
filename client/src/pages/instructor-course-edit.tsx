@@ -20,6 +20,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { ObjectUploader } from "@/components/ObjectUploader";
 import { QuizCreatorDialog } from "@/components/quiz-creator-dialog";
+import { formatDuration } from "@/lib/utils";
 import { 
   ArrowLeft, Plus, Edit2, Trash2, Video, FileText, ClipboardCheck, 
   Eye, EyeOff, Save, Upload, BookOpen, List, CheckCircle2
@@ -416,7 +417,7 @@ export default function InstructorCourseEdit() {
                               <Video className="h-5 w-5 text-muted-foreground" />
                               <div>
                                 <p className="font-medium">{lesson.title}</p>
-                                <p className="text-sm text-muted-foreground">{lesson.duration} min</p>
+                                <p className="text-sm text-muted-foreground">{formatDuration(lesson.duration)}</p>
                               </div>
                             </div>
                             {lesson.videoUrl ? (
