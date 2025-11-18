@@ -15,8 +15,9 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { QuizTaker } from "@/components/quiz-taker";
 import { ReviewSection } from "@/components/review-section";
+import { AssignmentSubmissionForm } from "@/components/assignment-submission-form";
 import { formatDuration } from "@/lib/utils";
-import type { Course, Module, Lesson, Enrollment } from "@shared/schema";
+import type { Course, Module, Lesson, Enrollment, Assignment, AssignmentSubmission } from "@shared/schema";
 
 interface ModuleWithLessons extends Module {
   lessons: Lesson[];
@@ -58,6 +59,20 @@ export default function CourseView() {
       return res.json();
     },
     enabled: isAuthenticated && !!selectedLesson?.id,
+  });
+
+  const { data: lessonAssignments } = useQuery<Assignment[]>({
+    queryKey: ["/api/courses", id, "assignments", selectedLesson?.id],
+    queryFn: async () => {
+      if (!id || !selectedLesson?.id) return [];
+      const res = await fetch(`/api/courses/${id}/assignments`, {
+        credentials: "include",
+      });
+      if (!res.ok) return [];
+      const allAssignments = await res.json();
+      return allAssignments.filter((a: Assignment) => a.lessonId === selectedLesson.id);
+    },
+    enabled: isAuthenticated && !!id && !!selectedLesson?.id,
   });
 
   const markCompleteMutation = useMutation({
@@ -256,6 +271,28 @@ export default function CourseView() {
                         </TabsContent>
                       ))}
                     </Tabs>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Assignments Section */}
+              {lessonAssignments && lessonAssignments.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center gap-2">
+                      <FileText className="h-5 w-5 text-primary" />
+                      <CardTitle>Tareas</CardTitle>
+                    </div>
+                    <CardDescription>
+                      Completa y entrega las tareas asignadas
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-6">
+                      {lessonAssignments.map((assignment) => (
+                        <AssignmentSubmissionForm key={assignment.id} assignment={assignment} />
+                      ))}
+                    </div>
                   </CardContent>
                 </Card>
               )}

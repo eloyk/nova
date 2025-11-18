@@ -218,7 +218,7 @@ export default function AssignmentSubmissions() {
                       <div className="flex items-center gap-2 mt-2 text-sm text-muted-foreground">
                         <Calendar className="h-4 w-4" />
                         <span>
-                          Entregado: {new Date(submission.submittedAt).toLocaleDateString('es-ES', {
+                          Entregado: {new Date(submission.submittedAt as Date).toLocaleDateString('es-ES', {
                             year: 'numeric',
                             month: 'long',
                             day: 'numeric',
