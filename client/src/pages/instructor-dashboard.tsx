@@ -7,6 +7,13 @@ import { useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import type { Course } from "@shared/schema";
 
+interface InstructorStats {
+  totalStudents: number;
+  averageRating: number | null;
+  totalReviews: number;
+  completionRate: number;
+}
+
 export default function InstructorDashboard() {
   const { user, isLoading: authLoading, isAuthenticated, isInstructor } = useAuth();
   const { toast } = useToast();
@@ -16,7 +23,7 @@ export default function InstructorDashboard() {
     enabled: isAuthenticated && isInstructor,
   });
 
-  const { data: stats } = useQuery({
+  const { data: stats } = useQuery<InstructorStats>({
     queryKey: ["/api/instructor/stats"],
     enabled: isAuthenticated && isInstructor,
   });
@@ -107,7 +114,11 @@ export default function InstructorDashboard() {
             <Star className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats?.averageRating || "N/A"}</div>
+            <div className="text-2xl font-bold">
+              {stats?.averageRating !== null && stats?.averageRating !== undefined 
+                ? stats.averageRating.toFixed(1) 
+                : "N/A"}
+            </div>
             <p className="text-xs text-muted-foreground">
               De {stats?.totalReviews || 0} reseñas
             </p>

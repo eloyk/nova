@@ -10,6 +10,7 @@ import {
   quizAttempts,
   assignments,
   assignmentSubmissions,
+  reviews,
   type User,
   type UpsertUser,
   type Course,
@@ -32,6 +33,8 @@ import {
   type InsertAssignment,
   type AssignmentSubmission,
   type InsertAssignmentSubmission,
+  type Review,
+  type InsertReview,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, sql, inArray } from "drizzle-orm";
@@ -104,6 +107,12 @@ export interface IStorage {
   getSubmissionsByAssignment(assignmentId: string): Promise<AssignmentSubmission[]>;
   createAssignmentSubmission(submission: InsertAssignmentSubmission): Promise<AssignmentSubmission>;
   updateAssignmentSubmission(id: string, submission: Partial<InsertAssignmentSubmission>): Promise<AssignmentSubmission | undefined>;
+
+  // Review operations
+  createReview(review: InsertReview): Promise<Review>;
+  getReviewsByCourse(courseId: string): Promise<Review[]>;
+  getReviewByUserAndCourse(userId: string, courseId: string): Promise<Review | undefined>;
+  getInstructorReviewStats(instructorId: string): Promise<{ averageRating: number | null; totalReviews: number }>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -479,6 +488,52 @@ export class DatabaseStorage implements IStorage {
       .where(eq(assignmentSubmissions.id, id))
       .returning();
     return submission || undefined;
+  }
+
+  // ============================================
+  // REVIEW OPERATIONS
+  // ============================================
+
+  async createReview(reviewData: InsertReview): Promise<Review> {
+    const [review] = await db.insert(reviews).values(reviewData).returning();
+    return review;
+  }
+
+  async getReviewsByCourse(courseId: string): Promise<Review[]> {
+    return await db.select().from(reviews).where(eq(reviews.courseId, courseId)).orderBy(desc(reviews.createdAt));
+  }
+
+  async getReviewByUserAndCourse(userId: string, courseId: string): Promise<Review | undefined> {
+    const [review] = await db.select().from(reviews).where(
+      and(eq(reviews.userId, userId), eq(reviews.courseId, courseId))
+    );
+    return review || undefined;
+  }
+
+  async getInstructorReviewStats(instructorId: string): Promise<{ averageRating: number | null; totalReviews: number }> {
+    const result = await db
+      .select({
+        averageRating: sql<number>`AVG(${reviews.rating})::float`,
+        totalReviews: sql<number>`COUNT(${reviews.id})::int`,
+      })
+      .from(reviews)
+      .innerJoin(courses, eq(reviews.courseId, courses.id))
+      .where(eq(courses.instructorId, instructorId));
+    
+    const stats = result[0];
+    
+    // Guard against undefined stats or null averageRating
+    if (!stats || stats.averageRating === null) {
+      return {
+        averageRating: null,
+        totalReviews: 0,
+      };
+    }
+    
+    return {
+      averageRating: parseFloat(stats.averageRating.toFixed(1)),
+      totalReviews: stats.totalReviews || 0,
+    };
   }
 }
 

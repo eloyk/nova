@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { QuizTaker } from "@/components/quiz-taker";
+import { ReviewSection } from "@/components/review-section";
 import { formatDuration } from "@/lib/utils";
 import type { Course, Module, Lesson, Enrollment } from "@shared/schema";
 
@@ -324,6 +325,11 @@ export default function CourseView() {
             </CardContent>
           </Card>
         </div>
+      </div>
+
+      {/* Reviews Section */}
+      <div className="mt-8">
+        <ReviewSection courseId={id!} isEnrolled={!!enrollment} />
       </div>
     </div>
   );

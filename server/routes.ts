@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { keycloak, isAuthenticated, isInstructor, getCurrentUser, getDatabaseUserId } from "./keycloakAuth";
-import { insertCourseSchema, insertModuleSchema, insertLessonSchema, insertEnrollmentSchema, insertLessonProgressSchema, insertQuizSchema, insertQuizQuestionSchema, insertQuizAttemptSchema, insertAssignmentSchema, insertAssignmentSubmissionSchema } from "@shared/schema";
+import { insertCourseSchema, insertModuleSchema, insertLessonSchema, insertEnrollmentSchema, insertLessonProgressSchema, insertQuizSchema, insertQuizQuestionSchema, insertQuizAttemptSchema, insertAssignmentSchema, insertAssignmentSubmissionSchema, insertReviewSchema } from "@shared/schema";
 import { db } from "./db";
 import { courses, modules, lessons, enrollments, lessonProgress as lessonProgressTable, quizzes, quizQuestions } from "@shared/schema";
 import { eq, and, sql } from "drizzle-orm";
@@ -241,10 +241,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ? Math.round((completedEnrollments.length / allEnrollments.length) * 100) 
         : 0;
 
+      // Get review statistics efficiently with a single aggregated query
+      const reviewStats = await storage.getInstructorReviewStats(userId);
+
       res.json({
         totalStudents: totalStudents.size,
-        averageRating: null,
-        totalReviews: 0,
+        averageRating: reviewStats.averageRating,
+        totalReviews: reviewStats.totalReviews,
         completionRate,
       });
     } catch (error) {
@@ -831,6 +834,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error updating lesson video:", error);
       res.status(500).json({ message: "Failed to update lesson video" });
+    }
+  });
+
+  // ============================================
+  // REVIEW ROUTES
+  // ============================================
+
+  // Create a review (students only)
+  app.post("/api/reviews", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = await getDatabaseUserId(req);
+      if (!userId) {
+        return res.status(401).json({ message: "Usuario no encontrado en la base de datos" });
+      }
+
+      const reviewData = insertReviewSchema.parse({ ...req.body, userId });
+      
+      // Check if user is enrolled in the course
+      const enrollment = await storage.getEnrollmentByUserAndCourse(userId, reviewData.courseId);
+      if (!enrollment) {
+        return res.status(403).json({ message: "Debes estar inscrito en el curso para dejar una reseña" });
+      }
+
+      // Check if user already reviewed this course
+      const existingReview = await storage.getReviewByUserAndCourse(userId, reviewData.courseId);
+      if (existingReview) {
+        return res.status(400).json({ message: "Ya has dejado una reseña para este curso" });
+      }
+
+      const review = await storage.createReview(reviewData);
+      res.status(201).json(review);
+    } catch (error: any) {
+      console.error("Error creating review:", error);
+      res.status(400).json({ message: error.message || "Failed to create review" });
+    }
+  });
+
+  // Get reviews for a course
+  app.get("/api/reviews/course/:id", async (req, res) => {
+    try {
+      const reviews = await storage.getReviewsByCourse(req.params.id);
+      res.json(reviews);
+    } catch (error) {
+      console.error("Error fetching reviews:", error);
+      res.status(500).json({ message: "Failed to fetch reviews" });
+    }
+  });
+
+  // Get current user's review for a course
+  app.get("/api/reviews/course/:id/me", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = await getDatabaseUserId(req);
+      if (!userId) {
+        return res.status(401).json({ message: "Usuario no encontrado en la base de datos" });
+      }
+      
+      const review = await storage.getReviewByUserAndCourse(userId, req.params.id);
+      // Return null if no review exists (not a 404 error)
+      res.json(review || null);
+    } catch (error) {
+      console.error("Error fetching user review:", error);
+      res.status(500).json({ message: "Failed to fetch review" });
     }
   });
 

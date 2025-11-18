@@ -243,6 +243,29 @@ export type InsertLessonProgress = z.infer<typeof insertLessonProgressSchema>;
 export type LessonProgress = typeof lessonProgress.$inferSelect;
 
 // ============================================
+// COURSE REVIEWS AND RATINGS
+// ============================================
+
+export const reviews = pgTable("reviews", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  courseId: varchar("course_id").notNull().references(() => courses.id, { onDelete: "cascade" }),
+  rating: integer("rating").notNull(), // 1-5
+  comment: text("comment"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertReviewSchema = createInsertSchema(reviews).omit({
+  id: true,
+  createdAt: true,
+}).extend({
+  rating: z.number().min(1).max(5),
+});
+
+export type InsertReview = z.infer<typeof insertReviewSchema>;
+export type Review = typeof reviews.$inferSelect;
+
+// ============================================
 // RELATIONS - Declared after all tables
 // ============================================
 
