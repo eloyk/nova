@@ -833,7 +833,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     limits: { fileSize: 500 * 1024 * 1024 } // 500MB max
   });
 
-  // Upload file endpoint
+  // Upload file endpoint (instructor only - for videos)
   app.post("/api/upload/video", isAuthenticated, isInstructor, upload.single('video'), async (req: any, res) => {
     try {
       if (!req.file) {
@@ -846,6 +846,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error uploading video:", error);
       res.status(500).json({ message: "Failed to upload video" });
+    }
+  });
+
+  // Upload file endpoint (authenticated users - for assignments)
+  app.post("/api/upload/file", isAuthenticated, upload.single('video'), async (req: any, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+      
+      // Return the URL path to access the file
+      const videoUrl = `/videos/${req.file.filename}`;
+      res.json({ videoUrl });
+    } catch (error) {
+      console.error("Error uploading file:", error);
+      res.status(500).json({ message: "Failed to upload file" });
     }
   });
 

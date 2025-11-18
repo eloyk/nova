@@ -11,6 +11,7 @@ interface ObjectUploaderProps {
   allowedFileTypes?: string[];
   maxFileSize?: number;
   note?: string;
+  endpoint?: string;
 }
 
 export function ObjectUploader({
@@ -18,6 +19,7 @@ export function ObjectUploader({
   allowedFileTypes = ["video/*"],
   maxFileSize = 500 * 1024 * 1024, // 500MB default
   note = "Sube tu archivo (máx. 500MB)",
+  endpoint = "/api/upload/video",
 }: ObjectUploaderProps) {
   const { toast } = useToast();
   const [uploading, setUploading] = useState(false);
@@ -92,7 +94,7 @@ export function ObjectUploader({
         setUploading(false);
       });
 
-      xhr.open("POST", "/api/upload/video");
+      xhr.open("POST", endpoint);
       xhr.send(formData);
     } catch (err) {
       console.error("Upload error:", err);

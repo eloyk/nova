@@ -225,6 +225,7 @@ export function AssignmentSubmissionForm({ assignment }: AssignmentSubmissionFor
                   onUploadComplete={(url) => setFileUrl(url)}
                   allowedFileTypes={["*"]}
                   note="Documentos, imágenes u otros archivos relevantes"
+                  endpoint="/api/upload/file"
                 />
               )}
             </div>
