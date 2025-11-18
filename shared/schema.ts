@@ -181,6 +181,8 @@ export const assignments = pgTable("assignments", {
 export const insertAssignmentSchema = createInsertSchema(assignments).omit({
   id: true,
   createdAt: true,
+}).extend({
+  dueDate: z.union([z.date(), z.string()]).transform(val => val ? new Date(val) : undefined).optional(),
 });
 
 export type InsertAssignment = z.infer<typeof insertAssignmentSchema>;
