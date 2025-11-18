@@ -50,22 +50,6 @@ export function QuizCreatorDialog({ open, onOpenChange, lessonId, courseId }: Qu
     mutationFn: async (data: any) => {
       return await apiRequest("POST", "/api/quizzes", data);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/courses", courseId] });
-      toast({
-        title: "Quiz creado",
-        description: "El quiz se ha creado exitosamente",
-      });
-      resetForm();
-      onOpenChange(false);
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message || "No se pudo crear el quiz",
-        variant: "destructive",
-      });
-    },
   });
 
   const createQuestionMutation = useMutation({
@@ -136,13 +120,20 @@ export function QuizCreatorDialog({ open, onOpenChange, lessonId, courseId }: Qu
     }
 
     try {
-      const quiz: any = await createQuizMutation.mutateAsync({
+      // Create quiz first
+      const quizResponse = await createQuizMutation.mutateAsync({
         lessonId,
         title,
         passPercentage,
       });
+      
+      // Parse the response to get the quiz object
+      const quiz: any = await quizResponse.json();
+      console.log("Quiz created:", quiz);
 
+      // Then create all questions
       for (const question of questions) {
+        console.log("Creating question for quizId:", quiz.id);
         await createQuestionMutation.mutateAsync({
           quizId: quiz.id,
           question: question.question,
@@ -153,9 +144,26 @@ export function QuizCreatorDialog({ open, onOpenChange, lessonId, courseId }: Qu
         });
       }
 
+      // Invalidate cache to refresh quiz lists
       queryClient.invalidateQueries({ queryKey: ["/api/courses", courseId] });
-    } catch (error) {
+      queryClient.invalidateQueries({ queryKey: ["/api/quizzes", "lesson", lessonId] });
+      
+      // Show success message
+      toast({
+        title: "Quiz creado",
+        description: "El quiz se ha creado exitosamente con todas las preguntas",
+      });
+
+      // Reset form and close dialog
+      resetForm();
+      onOpenChange(false);
+    } catch (error: any) {
       console.error("Error creating quiz:", error);
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo crear el quiz",
+        variant: "destructive",
+      });
     }
   };
 

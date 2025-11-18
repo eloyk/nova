@@ -558,15 +558,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get quizzes for a course
   app.get("/api/courses/:courseId/quizzes", isAuthenticated, async (req, res) => {
     try {
-      const course: any = await storage.getCourse(req.params.courseId);
+      const course = await storage.getCourse(req.params.courseId);
       if (!course) {
         return res.status(404).json({ message: "Course not found" });
       }
 
       const quizzesData: any[] = [];
       
-      for (const module of course.modules || []) {
-        for (const lesson of module.lessons || []) {
+      // Load modules for this course
+      const courseModules = await storage.getModulesByCourse(course.id);
+      
+      // Load lessons for each module and get their quizzes
+      for (const module of courseModules) {
+        const lessons = await storage.getLessonsByModule(module.id);
+        for (const lesson of lessons) {
           const quizzes = await storage.getQuizzesByLesson(lesson.id);
           for (const quiz of quizzes) {
             quizzesData.push({
