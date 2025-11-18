@@ -77,6 +77,21 @@ export function QuizTaker({ quizId, onComplete }: QuizTakerProps) {
     },
   });
 
+  // Load previous attempt if exists (only on first mount and not retaking)
+  // MUST be before early returns to comply with Rules of Hooks
+  useEffect(() => {
+    if (previousAttempts && previousAttempts.length > 0 && !hasLoadedPreviousAttempt.current && !isRetaking) {
+      const latestAttempt = previousAttempts[0];
+      // Only load if we haven't already loaded or submitted
+      if (!showResults && !attemptResult && Object.keys(answers).length === 0) {
+        setAnswers(latestAttempt.answers as Record<string, string> || {});
+        setAttemptResult(latestAttempt);
+        setShowResults(true);
+        hasLoadedPreviousAttempt.current = true;
+      }
+    }
+  }, [previousAttempts, showResults, attemptResult, answers, isRetaking]);
+
   if (quizLoading || questionsLoading) {
     return (
       <Card>
@@ -112,20 +127,6 @@ export function QuizTaker({ quizId, onComplete }: QuizTakerProps) {
       </Card>
     );
   }
-
-  // Load previous attempt if exists (only on first mount and not retaking)
-  useEffect(() => {
-    if (previousAttempts && previousAttempts.length > 0 && !hasLoadedPreviousAttempt.current && !isRetaking) {
-      const latestAttempt = previousAttempts[0];
-      // Only load if we haven't already loaded or submitted
-      if (!showResults && !attemptResult && Object.keys(answers).length === 0) {
-        setAnswers(latestAttempt.answers as Record<string, string> || {});
-        setAttemptResult(latestAttempt);
-        setShowResults(true);
-        hasLoadedPreviousAttempt.current = true;
-      }
-    }
-  }, [previousAttempts, showResults, attemptResult, answers, isRetaking]);
 
   const currentQuestion = questions?.[currentQuestionIndex];
   const progress = questions ? ((currentQuestionIndex + 1) / questions.length) * 100 : 0;

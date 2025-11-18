@@ -14,7 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { QuizTaker } from "@/components/quiz-taker";
-import type { Course, Module, Lesson } from "@shared/schema";
+import type { Course, Module, Lesson, Enrollment } from "@shared/schema";
 
 interface ModuleWithLessons extends Module {
   lessons: Lesson[];
@@ -35,7 +35,7 @@ export default function CourseView() {
     enabled: isAuthenticated && !!id,
   });
 
-  const { data: enrollment } = useQuery({
+  const { data: enrollment } = useQuery<Enrollment>({
     queryKey: ["/api/enrollments/course", id],
     enabled: isAuthenticated && !!id,
   });
