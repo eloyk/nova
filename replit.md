@@ -36,6 +36,7 @@ Preferred communication style: Simple, everyday language.
 - Protected routes with automatic redirect to Keycloak authentication
 - Toast notifications for user feedback
 - Progress tracking UI with visual indicators
+- Duration formatting utility (`formatDuration`) - Displays lesson durations in seconds (<60s), minutes+seconds (1-59m), or hours+minutes (≥1h)
 
 ### Backend Architecture
 
@@ -108,6 +109,7 @@ Preferred communication style: Simple, everyday language.
 - `POST /api/courses` - Create course (instructor only)
 - `PUT /api/courses/:id` - Update course (instructor only)
 - `DELETE /api/courses/:id` - Delete course (instructor only)
+- `POST /api/courses/:id/recalculate-progress` - Recalculate enrollment progress (instructor only)
 
 **Enrollment & Progress**
 - `POST /api/enrollments` - Enroll in course
