@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { QuizTaker } from "@/components/quiz-taker";
+import { formatDuration } from "@/lib/utils";
 import type { Course, Module, Lesson, Enrollment } from "@shared/schema";
 
 interface ModuleWithLessons extends Module {
@@ -220,7 +221,7 @@ export default function CourseView() {
                     {selectedLesson.duration && (
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <Clock className="h-4 w-4" />
-                        <span>{Math.floor(selectedLesson.duration / 60)} minutos</span>
+                        <span>{formatDuration(selectedLesson.duration)}</span>
                       </div>
                     )}
                   </div>
@@ -308,7 +309,7 @@ export default function CourseView() {
                                 <p className="text-sm font-medium truncate">{lesson.title}</p>
                                 {lesson.duration && (
                                   <p className="text-xs text-muted-foreground">
-                                    {Math.floor(lesson.duration / 60)} min
+                                    {formatDuration(lesson.duration)}
                                   </p>
                                 )}
                               </div>
