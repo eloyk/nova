@@ -9,17 +9,19 @@ import { Textarea } from "@/components/ui/textarea";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { insertCourseSchema, type InsertCourse } from "@shared/schema";
 import { useAuth } from "@/hooks/useAuth";
 import { useEffect } from "react";
+import { useLocation } from "wouter";
 import { ArrowLeft } from "lucide-react";
 
 export default function CreateCourse() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading: authLoading, isInstructor } = useAuth();
   const [step, setStep] = useState(1);
+  const [, setLocation] = useLocation();
 
   useEffect(() => {
     if (!authLoading && (!isAuthenticated || !isInstructor)) {
@@ -52,12 +54,21 @@ export default function CreateCourse() {
     mutationFn: async (data: InsertCourse) => {
       return await apiRequest("POST", "/api/courses", data);
     },
-    onSuccess: (data: any) => {
+    onSuccess: async (response: Response) => {
+      const course = await response.json();
+      
       toast({
         title: "¡Curso creado!",
         description: "Tu curso ha sido creado exitosamente",
       });
-      window.location.href = `/instructor/course/${data.id}`;
+      
+      // Prefetch the course data using the global queryFn to ensure it's available before navigation
+      await queryClient.prefetchQuery({
+        queryKey: ["/api/courses", course.id],
+      });
+      
+      // Navigate using wouter instead of window.location.href to preserve React Query cache
+      setLocation(`/instructor/course/${course.id}`);
     },
     onError: (error: Error) => {
       if (isUnauthorizedError(error)) {
@@ -101,7 +112,7 @@ export default function CreateCourse() {
         <Button
           variant="ghost"
           size="icon"
-          onClick={() => window.location.href = "/instructor"}
+          onClick={() => setLocation("/instructor")}
           data-testid="button-back"
         >
           <ArrowLeft className="h-4 w-4" />

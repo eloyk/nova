@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useParams } from "wouter";
+import { useParams, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -42,6 +42,7 @@ interface CourseWithModules extends Course {
 
 export default function InstructorCourseEdit() {
   const { id } = useParams<{ id: string }>();
+  const [, setLocation] = useLocation();
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("overview");
@@ -190,16 +191,31 @@ export default function InstructorCourseEdit() {
     );
   }
 
-  if (!course) {
+  if (!isLoading && !course) {
     return (
       <div className="flex items-center justify-center h-screen">
         <Card>
           <CardContent className="pt-6">
-            <p className="text-muted-foreground">Curso no encontrado</p>
+            <div className="text-center space-y-2">
+              <p className="text-muted-foreground">Curso no encontrado</p>
+              <Button
+                variant="outline"
+                onClick={() => setLocation("/instructor")}
+                data-testid="button-back-to-dashboard"
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Volver al Dashboard
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>
     );
+  }
+
+  // Type guard: if we reach here and course is still undefined, return null
+  if (!course) {
+    return null;
   }
 
   const totalLessons = course.modules.reduce((acc, module) => acc + module.lessons.length, 0);
