@@ -23,7 +23,19 @@ export function QuizTaker({ quizId, onComplete }: QuizTakerProps) {
   const [showResults, setShowResults] = useState(false);
   const [attemptResult, setAttemptResult] = useState<any>(null);
 
-  const { data: questions, isLoading: questionsLoading } = useQuery<any[]>({
+  const { data: quiz, isLoading: quizLoading, isError: quizError } = useQuery<any>({
+    queryKey: ["/api/quizzes", quizId],
+    queryFn: async () => {
+      const res = await fetch(`/api/quizzes/${quizId}`, {
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed to fetch quiz");
+      return res.json();
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes - reduce unnecessary refetches
+  });
+
+  const { data: questions, isLoading: questionsLoading, isError: questionsError } = useQuery<any[]>({
     queryKey: ["/api/quizzes", quizId, "questions"],
     queryFn: async () => {
       const res = await fetch(`/api/quizzes/${quizId}/questions`, {
@@ -32,18 +44,7 @@ export function QuizTaker({ quizId, onComplete }: QuizTakerProps) {
       if (!res.ok) throw new Error("Failed to fetch questions");
       return res.json();
     },
-  });
-
-  const { data: quiz } = useQuery<any>({
-    queryKey: ["/api/quizzes", quizId],
-    queryFn: async () => {
-      const res = await fetch(`/api/courses`, {
-        credentials: "include",
-      });
-      if (!res.ok) throw new Error("Failed to fetch quiz");
-      return res.json();
-    },
-    enabled: false,
+    staleTime: 5 * 60 * 1000, // 5 minutes - reduce unnecessary refetches
   });
 
   const submitQuizMutation = useMutation({
@@ -53,7 +54,8 @@ export function QuizTaker({ quizId, onComplete }: QuizTakerProps) {
     onSuccess: (result: any) => {
       setAttemptResult(result);
       setShowResults(true);
-      queryClient.invalidateQueries({ queryKey: ["/api/quizzes", quizId] });
+      // Only invalidate quiz attempts, not quiz metadata or questions
+      queryClient.invalidateQueries({ queryKey: ["/api/quiz-attempts"] });
       toast({
         title: result.passed ? "¡Aprobado!" : "No aprobado",
         description: `Obtuviste ${result.score}% en el quiz`,
@@ -70,7 +72,7 @@ export function QuizTaker({ quizId, onComplete }: QuizTakerProps) {
     },
   });
 
-  if (questionsLoading) {
+  if (quizLoading || questionsLoading) {
     return (
       <Card>
         <CardContent className="py-12">
@@ -80,7 +82,20 @@ export function QuizTaker({ quizId, onComplete }: QuizTakerProps) {
     );
   }
 
-  if (!questions || questions.length === 0) {
+  if (quizError || questionsError) {
+    return (
+      <Card>
+        <CardContent className="py-12">
+          <div className="text-center space-y-4">
+            <AlertCircle className="h-12 w-12 mx-auto text-red-500" />
+            <p className="text-muted-foreground">Error al cargar el quiz. Por favor, intenta de nuevo.</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!quiz || !questions || questions.length === 0) {
     return (
       <Card>
         <CardContent className="py-12">
@@ -93,10 +108,11 @@ export function QuizTaker({ quizId, onComplete }: QuizTakerProps) {
     );
   }
 
-  const currentQuestion = questions[currentQuestionIndex];
-  const progress = ((currentQuestionIndex + 1) / questions.length) * 100;
+  const currentQuestion = questions?.[currentQuestionIndex];
+  const progress = questions ? ((currentQuestionIndex + 1) / questions.length) * 100 : 0;
 
   const handleAnswerChange = (answer: string) => {
+    if (!currentQuestion) return;
     setAnswers({
       ...answers,
       [currentQuestion.id]: answer,
@@ -116,12 +132,17 @@ export function QuizTaker({ quizId, onComplete }: QuizTakerProps) {
   };
 
   const handleSubmit = () => {
+    if (!quiz || !questions) return;
+
     const correctAnswers = questions.reduce((count, question) => {
       return count + (answers[question.id] === question.correctAnswer ? 1 : 0);
     }, 0);
 
     const score = Math.round((correctAnswers / questions.length) * 100);
-    const passed = score >= (quiz?.passPercentage || 70);
+    
+    // Use configured pass percentage with defensive fallback
+    const passPercentage = typeof quiz.passPercentage === 'number' ? quiz.passPercentage : 70;
+    const passed = score >= passPercentage;
 
     submitQuizMutation.mutate({
       quizId,
@@ -131,7 +152,11 @@ export function QuizTaker({ quizId, onComplete }: QuizTakerProps) {
     });
   };
 
-  if (showResults && attemptResult) {
+  if (showResults && attemptResult && questions) {
+    // Validate attempt result data
+    const score = typeof attemptResult.score === 'number' ? attemptResult.score : 0;
+    const passed = Boolean(attemptResult.passed);
+
     return (
       <Card>
         <CardHeader>
@@ -139,10 +164,10 @@ export function QuizTaker({ quizId, onComplete }: QuizTakerProps) {
             <div className="space-y-1">
               <CardTitle className="text-2xl">Resultados del Quiz</CardTitle>
               <CardDescription>
-                {attemptResult.passed ? "¡Felicitaciones!" : "Sigue intentando"}
+                {passed ? "¡Felicitaciones!" : "Sigue intentando"}
               </CardDescription>
             </div>
-            {attemptResult.passed ? (
+            {passed ? (
               <Trophy className="h-12 w-12 text-yellow-500" />
             ) : (
               <XCircle className="h-12 w-12 text-red-500" />
@@ -153,22 +178,22 @@ export function QuizTaker({ quizId, onComplete }: QuizTakerProps) {
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium">Puntaje</span>
-              <span className="text-2xl font-bold">{attemptResult.score}%</span>
+              <span className="text-2xl font-bold">{score}%</span>
             </div>
-            <Progress value={attemptResult.score} className="h-2" />
+            <Progress value={score} className="h-2" />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">Respuestas Correctas</p>
               <p className="text-2xl font-bold text-green-600">
-                {Math.round((attemptResult.score / 100) * questions.length)} / {questions.length}
+                {Math.round((score / 100) * questions.length)} / {questions.length}
               </p>
             </div>
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">Estado</p>
-              <Badge variant={attemptResult.passed ? "default" : "destructive"}>
-                {attemptResult.passed ? "Aprobado" : "No Aprobado"}
+              <Badge variant={passed ? "default" : "destructive"}>
+                {passed ? "Aprobado" : "No Aprobado"}
               </Badge>
             </div>
           </div>
@@ -216,7 +241,7 @@ export function QuizTaker({ quizId, onComplete }: QuizTakerProps) {
     );
   }
 
-  const allQuestionsAnswered = questions.every((q) => answers[q.id]);
+  const allQuestionsAnswered = questions ? questions.every((q) => answers[q.id]) : false;
 
   return (
     <Card>
@@ -235,13 +260,13 @@ export function QuizTaker({ quizId, onComplete }: QuizTakerProps) {
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="space-y-4">
-          <h3 className="text-lg font-medium">{currentQuestion.question}</h3>
+          <h3 className="text-lg font-medium">{currentQuestion?.question}</h3>
 
           <RadioGroup
-            value={answers[currentQuestion.id] || ""}
+            value={currentQuestion ? (answers[currentQuestion.id] || "") : ""}
             onValueChange={handleAnswerChange}
           >
-            {currentQuestion.type === "multiple_choice" ? (
+            {currentQuestion?.type === "multiple_choice" ? (
               <div className="space-y-3">
                 {currentQuestion.options?.map((option: string, index: number) => (
                   <div key={index} className="flex items-center space-x-2">
@@ -297,10 +322,10 @@ export function QuizTaker({ quizId, onComplete }: QuizTakerProps) {
           </Button>
 
           <div className="flex gap-2">
-            {currentQuestionIndex < questions.length - 1 ? (
+            {questions && currentQuestionIndex < questions.length - 1 ? (
               <Button
                 onClick={handleNext}
-                disabled={!answers[currentQuestion.id]}
+                disabled={!currentQuestion || !answers[currentQuestion.id]}
                 data-testid="button-next"
               >
                 Siguiente
@@ -308,7 +333,7 @@ export function QuizTaker({ quizId, onComplete }: QuizTakerProps) {
             ) : (
               <Button
                 onClick={handleSubmit}
-                disabled={!allQuestionsAnswered || submitQuizMutation.isPending}
+                disabled={!allQuestionsAnswered || !quiz || submitQuizMutation.isPending}
                 data-testid="button-submit-quiz"
               >
                 {submitQuizMutation.isPending ? "Enviando..." : "Finalizar Quiz"}

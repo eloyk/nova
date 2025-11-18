@@ -520,6 +520,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get a single quiz by ID
+  app.get("/api/quizzes/:id", isAuthenticated, async (req, res) => {
+    try {
+      const quiz = await storage.getQuiz(req.params.id);
+      if (!quiz) {
+        return res.status(404).json({ message: "Quiz not found" });
+      }
+      res.json(quiz);
+    } catch (error) {
+      console.error("Error fetching quiz:", error);
+      res.status(500).json({ message: "Failed to fetch quiz" });
+    }
+  });
+
   app.get("/api/quizzes/:id/questions", isAuthenticated, async (req, res) => {
     try {
       const questions = await storage.getQuizQuestions(req.params.id);
