@@ -116,9 +116,16 @@ Preferred communication style: Simple, everyday language.
 - `POST /api/lesson-progress` - Mark lesson complete
 - `GET /api/lesson-progress/course/:id` - Course progress
 
-**Assessment APIs**
+**Assessment APIs - Quizzes**
 - `POST /api/quizzes` - Create quiz (instructor)
-- `POST /api/quiz-attempts` - Submit quiz answers
+- `GET /api/quizzes/:id` - Get quiz metadata by ID
+- `GET /api/quizzes/:id/questions` - Get all questions for a quiz
+- `GET /api/quizzes/lesson/:lessonId` - Get all quizzes for a lesson
+- `GET /api/courses/:courseId/quizzes` - Get all quizzes for a course
+- `POST /api/quiz-questions` - Create quiz question (instructor)
+- `POST /api/quiz-attempts` - Submit quiz answers (student)
+
+**Assessment APIs - Assignments**
 - `POST /api/assignments` - Create assignment (instructor)
 - `POST /api/assignment-submissions` - Submit assignment
 
