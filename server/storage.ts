@@ -105,7 +105,7 @@ export interface IStorage {
   // Assignment Submission operations
   getAssignmentSubmission(id: string): Promise<AssignmentSubmission | undefined>;
   getSubmissionByUserAndAssignment(userId: string, assignmentId: string): Promise<AssignmentSubmission | undefined>;
-  getSubmissionsByAssignment(assignmentId: string): Promise<AssignmentSubmission[]>;
+  getSubmissionsByAssignment(assignmentId: string): Promise<any[]>;
   createAssignmentSubmission(submission: InsertAssignmentSubmission): Promise<AssignmentSubmission>;
   updateAssignmentSubmission(id: string, submission: Partial<InsertAssignmentSubmission>): Promise<AssignmentSubmission | undefined>;
 
@@ -487,8 +487,31 @@ export class DatabaseStorage implements IStorage {
     return submission || undefined;
   }
 
-  async getSubmissionsByAssignment(assignmentId: string): Promise<AssignmentSubmission[]> {
-    return await db.select().from(assignmentSubmissions).where(eq(assignmentSubmissions.assignmentId, assignmentId)).orderBy(desc(assignmentSubmissions.submittedAt));
+  async getSubmissionsByAssignment(assignmentId: string): Promise<any[]> {
+    const results = await db
+      .select({
+        id: assignmentSubmissions.id,
+        userId: assignmentSubmissions.userId,
+        assignmentId: assignmentSubmissions.assignmentId,
+        content: assignmentSubmissions.content,
+        fileUrl: assignmentSubmissions.fileUrl,
+        submittedAt: assignmentSubmissions.submittedAt,
+        grade: assignmentSubmissions.grade,
+        feedback: assignmentSubmissions.feedback,
+        gradedAt: assignmentSubmissions.gradedAt,
+        user: {
+          id: users.id,
+          email: users.email,
+          firstName: users.firstName,
+          lastName: users.lastName,
+        },
+      })
+      .from(assignmentSubmissions)
+      .leftJoin(users, eq(assignmentSubmissions.userId, users.id))
+      .where(eq(assignmentSubmissions.assignmentId, assignmentId))
+      .orderBy(desc(assignmentSubmissions.submittedAt));
+    
+    return results;
   }
 
   async createAssignmentSubmission(submissionData: InsertAssignmentSubmission): Promise<AssignmentSubmission> {
