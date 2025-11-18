@@ -52,6 +52,7 @@ export default function InstructorCourseEdit() {
   const [selectedModule, setSelectedModule] = useState<Module | null>(null);
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
   const [selectedLessonForQuiz, setSelectedLessonForQuiz] = useState<{ id: string; title: string } | null>(null);
+  const [selectedLessonForAssignment, setSelectedLessonForAssignment] = useState<{ id: string; title: string } | null>(null);
   const [uploadingVideo, setUploadingVideo] = useState(false);
   const [videoUrl, setVideoUrl] = useState("");
 
@@ -663,24 +664,115 @@ export default function InstructorCourseEdit() {
         <TabsContent value="assignments" className="space-y-6">
           <div className="flex justify-between items-center">
             <h2 className="text-2xl font-bold">Tareas</h2>
-            <Button data-testid="button-add-assignment">
-              <Plus className="h-4 w-4 mr-2" />
-              Crear Tarea
-            </Button>
+            <Select
+              onValueChange={(lessonId) => {
+                const lesson = course?.modules.flatMap(m => m.lessons).find(l => l.id === lessonId);
+                if (lesson) {
+                  setSelectedLessonForAssignment({ id: lesson.id, title: lesson.title });
+                }
+              }}
+            >
+              <SelectTrigger asChild>
+                <Button data-testid="button-add-assignment">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Crear Tarea
+                </Button>
+              </SelectTrigger>
+              <SelectContent>
+                {course?.modules.map(module => (
+                  <div key={module.id}>
+                    <div className="px-2 py-1.5 text-sm font-semibold text-muted-foreground">
+                      {module.title}
+                    </div>
+                    {module.lessons.map(lesson => (
+                      <SelectItem key={lesson.id} value={lesson.id}>
+                        {lesson.title}
+                      </SelectItem>
+                    ))}
+                  </div>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-          <Card>
-            <CardContent className="py-12">
-              <div className="text-center space-y-4">
-                <FileText className="h-12 w-12 mx-auto text-muted-foreground" />
-                <div className="space-y-2">
-                  <h3 className="text-lg font-semibold">Próximamente</h3>
-                  <p className="text-muted-foreground">
-                    La funcionalidad de tareas se implementará pronto
-                  </p>
+
+          {assignments && assignments.length > 0 ? (
+            <div className="space-y-4">
+              {assignments.map((assignment) => {
+                const lesson = course?.modules.flatMap(m => m.lessons).find(l => l.id === assignment.lessonId);
+                const module = course?.modules.find(m => m.lessons.some(l => l.id === assignment.lessonId));
+                
+                return (
+                  <Card key={assignment.id} className="hover-elevate" data-testid={`card-assignment-${assignment.id}`}>
+                    <CardHeader>
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1">
+                          <CardTitle className="text-lg">{assignment.title}</CardTitle>
+                          <CardDescription className="mt-1">
+                            {module?.title} → {lesson?.title}
+                          </CardDescription>
+                          {assignment.dueDate && (
+                            <p className="text-sm text-muted-foreground mt-2">
+                              Vence: {new Date(assignment.dueDate).toLocaleDateString('es-ES', { 
+                                year: 'numeric', 
+                                month: 'long', 
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </p>
+                          )}
+                        </div>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => window.location.href = `/instructor/assignment/${assignment.id}/submissions`}
+                          data-testid={`button-view-submissions-${assignment.id}`}
+                        >
+                          <Eye className="h-4 w-4 mr-2" />
+                          Ver Entregas
+                        </Button>
+                      </div>
+                      <p className="text-sm text-muted-foreground mt-3">
+                        {assignment.description}
+                      </p>
+                    </CardHeader>
+                  </Card>
+                );
+              })}
+            </div>
+          ) : (
+            <Card>
+              <CardContent className="py-12">
+                <div className="text-center space-y-4">
+                  <FileText className="h-12 w-12 mx-auto text-muted-foreground" />
+                  <div className="space-y-2">
+                    <h3 className="text-lg font-semibold">No hay tareas aún</h3>
+                    <p className="text-muted-foreground">
+                      Crea tu primera tarea para que los estudiantes practiquen
+                    </p>
+                  </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          )}
+
+          {selectedLessonForAssignment && (
+            <Dialog 
+              open={!!selectedLessonForAssignment} 
+              onOpenChange={(open) => !open && setSelectedLessonForAssignment(null)}
+            >
+              <DialogContent className="max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle>Crear Nueva Tarea</DialogTitle>
+                </DialogHeader>
+                <AssignmentForm 
+                  lessonId={selectedLessonForAssignment.id}
+                  courseId={id || ""}
+                  onSuccess={() => setSelectedLessonForAssignment(null)}
+                />
+              </DialogContent>
+            </Dialog>
+          )}
         </TabsContent>
       </Tabs>
     </div>
