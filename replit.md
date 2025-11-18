@@ -128,8 +128,13 @@ Preferred communication style: Simple, everyday language.
 - `POST /api/quiz-attempts` - Submit quiz answers (student)
 
 **Assessment APIs - Assignments**
+- `GET /api/courses/:courseId/assignments` - Get all assignments for a course
+- `GET /api/assignments/:id` - Get assignment by ID
 - `POST /api/assignments` - Create assignment (instructor)
+- `GET /api/assignment-submissions/assignment/:assignmentId` - Get all submissions for assignment (instructor)
+- `GET /api/assignment-submissions/me/:assignmentId` - Get current user's submission
 - `POST /api/assignment-submissions` - Submit assignment
+- `PUT /api/assignment-submissions/:id` - Grade/update submission (instructor)
 
 **Analytics**
 - `GET /api/students/stats` - Student dashboard statistics

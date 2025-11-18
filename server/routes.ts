@@ -689,6 +689,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ASSIGNMENT ROUTES
   // ============================================
 
+  // Get course assignments
+  app.get("/api/courses/:courseId/assignments", isAuthenticated, async (req, res) => {
+    try {
+      const assignments = await storage.getAssignmentsByCourse(req.params.courseId);
+      res.json(assignments);
+    } catch (error) {
+      console.error("Error fetching course assignments:", error);
+      res.status(500).json({ message: "Failed to fetch assignments" });
+    }
+  });
+
+  // Get assignment by ID
+  app.get("/api/assignments/:id", isAuthenticated, async (req, res) => {
+    try {
+      const assignment = await storage.getAssignment(req.params.id);
+      if (!assignment) {
+        return res.status(404).json({ message: "Assignment not found" });
+      }
+      res.json(assignment);
+    } catch (error) {
+      console.error("Error fetching assignment:", error);
+      res.status(500).json({ message: "Failed to fetch assignment" });
+    }
+  });
+
+  // Create assignment (instructor only)
   app.post("/api/assignments", isAuthenticated, isInstructor, async (req: any, res) => {
     try {
       const userId = await getDatabaseUserId(req);
@@ -720,6 +746,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get all submissions for an assignment (instructor only)
+  app.get("/api/assignment-submissions/assignment/:assignmentId", isAuthenticated, isInstructor, async (req, res) => {
+    try {
+      const submissions = await storage.getSubmissionsByAssignment(req.params.assignmentId);
+      res.json(submissions);
+    } catch (error) {
+      console.error("Error fetching assignment submissions:", error);
+      res.status(500).json({ message: "Failed to fetch submissions" });
+    }
+  });
+
+  // Get current user's submission for an assignment
+  app.get("/api/assignment-submissions/me/:assignmentId", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = await getDatabaseUserId(req);
+      if (!userId) {
+        return res.status(401).json({ message: "Usuario no encontrado en la base de datos" });
+      }
+      
+      const submission = await storage.getSubmissionByUserAndAssignment(userId, req.params.assignmentId);
+      res.json(submission || null);
+    } catch (error) {
+      console.error("Error fetching user submission:", error);
+      res.status(500).json({ message: "Failed to fetch submission" });
+    }
+  });
+
+  // Submit assignment
   app.post("/api/assignment-submissions", isAuthenticated, async (req: any, res) => {
     try {
       const userId = await getDatabaseUserId(req);

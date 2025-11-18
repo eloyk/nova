@@ -99,6 +99,7 @@ export interface IStorage {
   // Assignment operations
   getAssignment(id: string): Promise<Assignment | undefined>;
   getAssignmentsByLesson(lessonId: string): Promise<Assignment[]>;
+  getAssignmentsByCourse(courseId: string): Promise<Assignment[]>;
   createAssignment(assignment: InsertAssignment): Promise<Assignment>;
 
   // Assignment Submission operations
@@ -449,6 +450,20 @@ export class DatabaseStorage implements IStorage {
 
   async getAssignmentsByLesson(lessonId: string): Promise<Assignment[]> {
     return await db.select().from(assignments).where(eq(assignments.lessonId, lessonId));
+  }
+
+  async getAssignmentsByCourse(courseId: string): Promise<Assignment[]> {
+    const result = await db
+      .select({
+        assignment: assignments,
+      })
+      .from(assignments)
+      .innerJoin(lessons, eq(assignments.lessonId, lessons.id))
+      .innerJoin(modules, eq(lessons.moduleId, modules.id))
+      .where(eq(modules.courseId, courseId))
+      .orderBy(modules.order, lessons.order);
+    
+    return result.map(r => r.assignment);
   }
 
   async createAssignment(assignmentData: InsertAssignment): Promise<Assignment> {
