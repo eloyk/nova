@@ -20,6 +20,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { ObjectUploader } from "@/components/ObjectUploader";
 import { QuizCreatorDialog } from "@/components/quiz-creator-dialog";
+import { AssignmentForm } from "@/components/assignment-form";
 import { formatDuration } from "@/lib/utils";
 import { 
   ArrowLeft, Plus, Edit2, Trash2, Video, FileText, ClipboardCheck, 
@@ -672,11 +673,9 @@ export default function InstructorCourseEdit() {
                 }
               }}
             >
-              <SelectTrigger asChild>
-                <Button data-testid="button-add-assignment">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Crear Tarea
-                </Button>
+              <SelectTrigger className="w-auto" data-testid="button-add-assignment">
+                <Plus className="h-4 w-4 mr-2" />
+                Crear Tarea
               </SelectTrigger>
               <SelectContent>
                 {course?.modules.map(module => (
