@@ -175,6 +175,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Recalculate enrollment progress for a course (instructor only)
+  app.post("/api/courses/:id/recalculate-progress", isAuthenticated, isInstructor, async (req: any, res) => {
+    try {
+      const userId = await getDatabaseUserId(req);
+      if (!userId) {
+        return res.status(401).json({ message: "Usuario no encontrado en la base de datos" });
+      }
+      const course = await storage.getCourse(req.params.id);
+      
+      if (!course) {
+        return res.status(404).json({ message: "Course not found" });
+      }
+
+      if (course.instructorId !== userId) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      await storage.recalculateEnrollmentProgress(req.params.id);
+      res.json({ message: "Progress recalculated successfully" });
+    } catch (error) {
+      console.error("Error recalculating progress:", error);
+      res.status(500).json({ message: "Failed to recalculate progress" });
+    }
+  });
+
   // Get instructor's courses
   app.get("/api/instructor/courses", isAuthenticated, isInstructor, async (req: any, res) => {
     try {

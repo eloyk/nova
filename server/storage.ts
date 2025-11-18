@@ -71,6 +71,7 @@ export interface IStorage {
   getEnrollmentsByCourse(courseId: string): Promise<Enrollment[]>;
   createEnrollment(enrollment: InsertEnrollment): Promise<Enrollment>;
   updateEnrollment(id: string, enrollment: Partial<InsertEnrollment>): Promise<Enrollment | undefined>;
+  recalculateEnrollmentProgress(courseId: string): Promise<void>;
 
   // Lesson Progress operations
   getLessonProgress(userId: string, lessonId: string): Promise<LessonProgress | undefined>;
@@ -283,6 +284,35 @@ export class DatabaseStorage implements IStorage {
       .where(eq(enrollments.id, id))
       .returning();
     return enrollment || undefined;
+  }
+
+  async recalculateEnrollmentProgress(courseId: string): Promise<void> {
+    // Get all enrollments for this course
+    const courseEnrollments = await this.getEnrollmentsByCourse(courseId);
+    
+    // Get all lessons for this course
+    const courseModules = await this.getModulesByCourse(courseId);
+    const allCourseLessons: Lesson[] = [];
+    for (const module of courseModules) {
+      const moduleLessons = await this.getLessonsByModule(module.id);
+      allCourseLessons.push(...moduleLessons);
+    }
+    
+    const totalLessons = allCourseLessons.length;
+    
+    // For each enrollment, recalculate progress
+    for (const enrollment of courseEnrollments) {
+      const userProgress = await this.getLessonProgressByUser(enrollment.userId);
+      const completedInCourse = userProgress.filter(p => 
+        p.completed && allCourseLessons.some(l => l.id === p.lessonId)
+      );
+      
+      const progressPercentage = totalLessons > 0 
+        ? Math.round((completedInCourse.length / totalLessons) * 100) 
+        : 0;
+      
+      await this.updateEnrollment(enrollment.id, { progressPercentage });
+    }
   }
 
   // ============================================
