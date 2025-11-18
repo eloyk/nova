@@ -530,6 +530,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get quizzes for a course
+  app.get("/api/courses/:courseId/quizzes", isAuthenticated, async (req, res) => {
+    try {
+      const course: any = await storage.getCourse(req.params.courseId);
+      if (!course) {
+        return res.status(404).json({ message: "Course not found" });
+      }
+
+      const quizzesData: any[] = [];
+      
+      for (const module of course.modules || []) {
+        for (const lesson of module.lessons || []) {
+          const quizzes = await storage.getQuizzesByLesson(lesson.id);
+          for (const quiz of quizzes) {
+            quizzesData.push({
+              ...quiz,
+              lessonId: lesson.id,
+              lessonTitle: lesson.title,
+              moduleTitle: module.title,
+            });
+          }
+        }
+      }
+
+      res.json(quizzesData);
+    } catch (error) {
+      console.error("Error fetching course quizzes:", error);
+      res.status(500).json({ message: "Failed to fetch quizzes" });
+    }
+  });
+
   app.post("/api/quiz-attempts", isAuthenticated, async (req: any, res) => {
     try {
       const userId = await getDatabaseUserId(req);

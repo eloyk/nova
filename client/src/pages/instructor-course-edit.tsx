@@ -19,6 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { ObjectUploader } from "@/components/ObjectUploader";
+import { QuizCreatorDialog } from "@/components/quiz-creator-dialog";
 import { 
   ArrowLeft, Plus, Edit2, Trash2, Video, FileText, ClipboardCheck, 
   Eye, EyeOff, Save, Upload, BookOpen, List, CheckCircle2
@@ -45,8 +46,10 @@ export default function InstructorCourseEdit() {
   const [activeTab, setActiveTab] = useState("overview");
   const [isModuleDialogOpen, setIsModuleDialogOpen] = useState(false);
   const [isLessonDialogOpen, setIsLessonDialogOpen] = useState(false);
+  const [isQuizDialogOpen, setIsQuizDialogOpen] = useState(false);
   const [selectedModule, setSelectedModule] = useState<Module | null>(null);
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
+  const [selectedLessonForQuiz, setSelectedLessonForQuiz] = useState<{ id: string; title: string } | null>(null);
   const [uploadingVideo, setUploadingVideo] = useState(false);
   const [videoUrl, setVideoUrl] = useState("");
 
@@ -55,8 +58,15 @@ export default function InstructorCourseEdit() {
     enabled: isAuthenticated && !!id,
   });
 
-  const { data: quizzes } = useQuery<Quiz[]>({
+  const { data: quizzes } = useQuery<any[]>({
     queryKey: ["/api/courses", id, "quizzes"],
+    queryFn: async () => {
+      const res = await fetch(`/api/courses/${id}/quizzes`, {
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed to fetch quizzes");
+      return res.json();
+    },
     enabled: isAuthenticated && !!id,
   });
 
@@ -540,24 +550,96 @@ export default function InstructorCourseEdit() {
         <TabsContent value="quizzes" className="space-y-6">
           <div className="flex justify-between items-center">
             <h2 className="text-2xl font-bold">Quizzes</h2>
-            <Button data-testid="button-add-quiz">
-              <Plus className="h-4 w-4 mr-2" />
-              Crear Quiz
-            </Button>
-          </div>
-          <Card>
-            <CardContent className="py-12">
-              <div className="text-center space-y-4">
-                <ClipboardCheck className="h-12 w-12 mx-auto text-muted-foreground" />
-                <div className="space-y-2">
-                  <h3 className="text-lg font-semibold">Próximamente</h3>
-                  <p className="text-muted-foreground">
-                    La funcionalidad de quizzes se implementará pronto
-                  </p>
+            <Dialog open={isQuizDialogOpen} onOpenChange={setIsQuizDialogOpen}>
+              <DialogTrigger asChild>
+                <Button data-testid="button-add-quiz" disabled={!course?.modules?.length}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Crear Quiz
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Seleccionar Lección</DialogTitle>
+                  <DialogDescription>
+                    Selecciona la lección para la cual deseas crear un quiz
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  {course?.modules?.map((module) => (
+                    <div key={module.id} className="space-y-2">
+                      <h3 className="font-semibold text-sm text-muted-foreground">{module.title}</h3>
+                      <div className="space-y-1">
+                        {module.lessons?.map((lesson) => (
+                          <Button
+                            key={lesson.id}
+                            variant="outline"
+                            className="w-full justify-start"
+                            onClick={() => {
+                              setSelectedLessonForQuiz({ id: lesson.id, title: lesson.title });
+                              setIsQuizDialogOpen(false);
+                            }}
+                            data-testid={`button-select-lesson-${lesson.id}`}
+                          >
+                            {lesson.title}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                  {(!course?.modules?.length || !course?.modules?.some(m => m.lessons?.length)) && (
+                    <p className="text-sm text-muted-foreground text-center">
+                      Necesitas crear módulos y lecciones antes de agregar quizzes
+                    </p>
+                  )}
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+              </DialogContent>
+            </Dialog>
+          </div>
+
+          {quizzes && quizzes.length > 0 ? (
+            <div className="grid gap-4">
+              {quizzes.map((quiz: any) => (
+                <Card key={quiz.id}>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-1">
+                        <CardTitle className="text-lg">{quiz.title}</CardTitle>
+                        <CardDescription>
+                          {quiz.moduleTitle} → {quiz.lessonTitle}
+                        </CardDescription>
+                      </div>
+                      <Badge variant="secondary">
+                        {quiz.passPercentage}% para aprobar
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <Card>
+              <CardContent className="py-12">
+                <div className="text-center space-y-4">
+                  <ClipboardCheck className="h-12 w-12 mx-auto text-muted-foreground" />
+                  <div className="space-y-2">
+                    <h3 className="text-lg font-semibold">No hay quizzes aún</h3>
+                    <p className="text-muted-foreground">
+                      Crea tu primer quiz para evaluar a tus estudiantes
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {selectedLessonForQuiz && (
+            <QuizCreatorDialog
+              open={!!selectedLessonForQuiz}
+              onOpenChange={(open) => !open && setSelectedLessonForQuiz(null)}
+              lessonId={selectedLessonForQuiz.id}
+              courseId={id || ""}
+            />
+          )}
         </TabsContent>
 
         {/* Assignments Tab */}
