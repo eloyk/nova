@@ -224,28 +224,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       const instructorCourses = await storage.getCoursesByInstructor(userId);
       
-      const totalStudents = new Set();
+      const totalStudents = new Set<string>();
+      const allEnrollments: any[] = [];
+      
       for (const course of instructorCourses) {
         const enrolls = await storage.getEnrollmentsByCourse(course.id);
-        enrolls.forEach(e => totalStudents.add(e.userId));
+        enrolls.forEach(e => {
+          totalStudents.add(e.userId);
+          allEnrollments.push(e);
+        });
       }
 
-      const completedEnrollments = [];
-      for (const course of instructorCourses) {
-        const enrolls = await storage.getEnrollmentsByCourse(course.id);
-        completedEnrollments.push(...enrolls.filter(e => e.completedAt));
-      }
-
-      const totalEnrollments = await Promise.all(
-        instructorCourses.map(c => storage.getEnrollmentsByCourse(c.id))
-      );
-      const totalCount = totalEnrollments.flat().length;
+      // Calculate completion rate based on progress_percentage >= 100
+      const completedEnrollments = allEnrollments.filter(e => e.progressPercentage >= 100);
+      const completionRate = allEnrollments.length > 0 
+        ? Math.round((completedEnrollments.length / allEnrollments.length) * 100) 
+        : 0;
 
       res.json({
         totalStudents: totalStudents.size,
         averageRating: null,
         totalReviews: 0,
-        completionRate: totalCount > 0 ? Math.round((completedEnrollments.length / totalCount) * 100) : 0,
+        completionRate,
       });
     } catch (error) {
       console.error("Error fetching instructor stats:", error);
