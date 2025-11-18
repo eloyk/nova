@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { CheckCircle2, XCircle, Trophy, AlertCircle } from "lucide-react";
+import type { QuizAttempt } from "@shared/schema";
 
 interface QuizTakerProps {
   quizId: string;
@@ -21,7 +22,9 @@ export function QuizTaker({ quizId, onComplete }: QuizTakerProps) {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [showResults, setShowResults] = useState(false);
-  const [attemptResult, setAttemptResult] = useState<any>(null);
+  const [attemptResult, setAttemptResult] = useState<QuizAttempt | null>(null);
+  const [isRetaking, setIsRetaking] = useState(false);
+  const hasLoadedPreviousAttempt = useRef(false);
 
   const { data: quiz, isLoading: quizLoading, isError: quizError } = useQuery<any>({
     queryKey: ["/api/quizzes", quizId],
@@ -45,6 +48,18 @@ export function QuizTaker({ quizId, onComplete }: QuizTakerProps) {
       return res.json();
     },
     staleTime: 5 * 60 * 1000, // 5 minutes - reduce unnecessary refetches
+  });
+
+  const { data: previousAttempts } = useQuery<QuizAttempt[]>({
+    queryKey: ["/api/quiz-attempts/quiz", quizId],
+    queryFn: async () => {
+      const res = await fetch(`/api/quiz-attempts/quiz/${quizId}`, {
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed to fetch attempts");
+      return res.json();
+    },
+    staleTime: 0, // Always fetch fresh attempts
   });
 
   const markLessonCompleteMutation = useMutation({
@@ -98,6 +113,20 @@ export function QuizTaker({ quizId, onComplete }: QuizTakerProps) {
     );
   }
 
+  // Load previous attempt if exists (only on first mount and not retaking)
+  useEffect(() => {
+    if (previousAttempts && previousAttempts.length > 0 && !hasLoadedPreviousAttempt.current && !isRetaking) {
+      const latestAttempt = previousAttempts[0];
+      // Only load if we haven't already loaded or submitted
+      if (!showResults && !attemptResult && Object.keys(answers).length === 0) {
+        setAnswers(latestAttempt.answers as Record<string, string> || {});
+        setAttemptResult(latestAttempt);
+        setShowResults(true);
+        hasLoadedPreviousAttempt.current = true;
+      }
+    }
+  }, [previousAttempts, showResults, attemptResult, answers, isRetaking]);
+
   const currentQuestion = questions?.[currentQuestionIndex];
   const progress = questions ? ((currentQuestionIndex + 1) / questions.length) * 100 : 0;
 
@@ -147,6 +176,8 @@ export function QuizTaker({ quizId, onComplete }: QuizTakerProps) {
       const result = await attemptResponse.json();
       setAttemptResult(result);
       setShowResults(true);
+      setIsRetaking(false); // Reset retaking flag after submitting
+      hasLoadedPreviousAttempt.current = false; // Reset to allow loading fresh results
       
       // If passed, mark lesson as completed
       if (result.passed && quiz.lessonId) {
@@ -166,8 +197,8 @@ export function QuizTaker({ quizId, onComplete }: QuizTakerProps) {
         }
       }
       
-      // Invalidate quiz attempts
-      queryClient.invalidateQueries({ queryKey: ["/api/quiz-attempts"] });
+      // Invalidate quiz attempts with correct query key
+      queryClient.invalidateQueries({ queryKey: ["/api/quiz-attempts/quiz", quizId] });
       
       // Show success toast
       toast({
@@ -269,6 +300,23 @@ export function QuizTaker({ quizId, onComplete }: QuizTakerProps) {
                 </Card>
               );
             })}
+          </div>
+
+          <div className="pt-4 border-t">
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => {
+                setShowResults(false);
+                setAttemptResult(null);
+                setAnswers({});
+                setCurrentQuestionIndex(0);
+                setIsRetaking(true); // Set retaking flag to prevent auto-loading
+              }}
+              data-testid="button-retake-quiz"
+            >
+              Intentar de Nuevo
+            </Button>
           </div>
         </CardContent>
       </Card>

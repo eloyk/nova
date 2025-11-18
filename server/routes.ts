@@ -642,6 +642,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get quiz attempts for a specific quiz (student's previous attempts)
+  app.get("/api/quiz-attempts/quiz/:quizId", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = await getDatabaseUserId(req);
+      if (!userId) {
+        return res.status(401).json({ message: "Usuario no encontrado en la base de datos" });
+      }
+      const attempts = await storage.getQuizAttemptsByUser(userId, req.params.quizId);
+      res.json(attempts);
+    } catch (error) {
+      console.error("Error fetching quiz attempts:", error);
+      res.status(500).json({ message: "Failed to fetch quiz attempts" });
+    }
+  });
+
   // ============================================
   // ASSIGNMENT ROUTES
   // ============================================
