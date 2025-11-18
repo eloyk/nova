@@ -480,7 +480,7 @@ export default function InstructorCourseEdit() {
                     name="duration"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Duración (minutos)</FormLabel>
+                        <FormLabel>Duración (segundos)</FormLabel>
                         <FormControl>
                           <Input 
                             {...field} 
