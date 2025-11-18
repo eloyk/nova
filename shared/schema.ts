@@ -201,6 +201,11 @@ export const assignmentSubmissions = pgTable("assignment_submissions", {
 export const insertAssignmentSubmissionSchema = createInsertSchema(assignmentSubmissions).omit({
   id: true,
   submittedAt: true,
+}).extend({
+  content: z.string().optional(),
+  fileUrl: z.string().optional(),
+}).refine((data) => data.content || data.fileUrl, {
+  message: "Debe proporcionar contenido de texto o un archivo adjunto",
 });
 
 export type InsertAssignmentSubmission = z.infer<typeof insertAssignmentSubmissionSchema>;

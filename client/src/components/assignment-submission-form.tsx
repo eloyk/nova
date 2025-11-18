@@ -6,7 +6,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Calendar, CheckCircle2, Clock, Award } from "lucide-react";
+import { ObjectUploader } from "@/components/ObjectUploader";
+import { Calendar, CheckCircle2, Clock, Award, FileText } from "lucide-react";
 import type { Assignment, AssignmentSubmission } from "@shared/schema";
 
 interface AssignmentSubmissionFormProps {
@@ -16,6 +17,7 @@ interface AssignmentSubmissionFormProps {
 export function AssignmentSubmissionForm({ assignment }: AssignmentSubmissionFormProps) {
   const { toast } = useToast();
   const [content, setContent] = useState("");
+  const [fileUrl, setFileUrl] = useState<string | null>(null);
 
   const { data: mySubmission, isLoading } = useQuery<AssignmentSubmission | null>({
     queryKey: ["/api/assignment-submissions/me", assignment.id],
@@ -29,19 +31,27 @@ export function AssignmentSubmissionForm({ assignment }: AssignmentSubmissionFor
   });
 
   const submitAssignmentMutation = useMutation({
-    mutationFn: async (content: string) => {
-      return await apiRequest("POST", "/api/assignment-submissions", {
+    mutationFn: async (data: { content?: string; fileUrl?: string }) => {
+      const payload: any = {
         assignmentId: assignment.id,
-        content,
-      });
+      };
+      if (data.content) {
+        payload.content = data.content;
+      }
+      if (data.fileUrl) {
+        payload.fileUrl = data.fileUrl;
+      }
+      return await apiRequest("POST", "/api/assignment-submissions", payload);
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["/api/assignment-submissions/me", assignment.id] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/assignment-submissions/assignment", assignment.id] });
       toast({
         title: "¡Tarea entregada!",
         description: "Tu tarea ha sido entregada exitosamente",
       });
       setContent("");
+      setFileUrl(null);
     },
     onError: (error: any) => {
       toast({
@@ -53,16 +63,19 @@ export function AssignmentSubmissionForm({ assignment }: AssignmentSubmissionFor
   });
 
   const handleSubmit = () => {
-    if (!content.trim()) {
+    if (!content.trim() && !fileUrl) {
       toast({
         title: "Contenido requerido",
-        description: "Por favor escribe tu respuesta antes de entregar",
+        description: "Por favor escribe tu respuesta o adjunta un archivo antes de entregar",
         variant: "destructive",
       });
       return;
     }
 
-    submitAssignmentMutation.mutate(content);
+    submitAssignmentMutation.mutate({ 
+      content: content.trim() || undefined, 
+      fileUrl: fileUrl || undefined 
+    });
   };
 
   if (isLoading) {
@@ -129,12 +142,30 @@ export function AssignmentSubmissionForm({ assignment }: AssignmentSubmissionFor
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div>
-              <p className="text-sm font-medium mb-2">Contenido:</p>
-              <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                {mySubmission.content}
-              </p>
-            </div>
+            {mySubmission.content && (
+              <div>
+                <p className="text-sm font-medium mb-2">Contenido:</p>
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                  {mySubmission.content}
+                </p>
+              </div>
+            )}
+
+            {mySubmission.fileUrl && (
+              <div>
+                <p className="text-sm font-medium mb-2">Archivo Adjunto:</p>
+                <a
+                  href={mySubmission.fileUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-primary hover:underline flex items-center gap-2"
+                  data-testid="link-submitted-file"
+                >
+                  <FileText className="h-4 w-4" />
+                  Ver archivo
+                </a>
+              </div>
+            )}
 
             {mySubmission.grade !== null && (
               <div className="pt-4 border-t space-y-3">
@@ -174,10 +205,34 @@ export function AssignmentSubmissionForm({ assignment }: AssignmentSubmissionFor
               />
             </div>
 
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Archivo Adjunto (Opcional)</label>
+              {fileUrl ? (
+                <div className="flex items-center gap-2 p-3 rounded-md bg-muted">
+                  <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  <span className="text-sm flex-1">Archivo adjuntado</span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setFileUrl(null)}
+                    data-testid="button-remove-file"
+                  >
+                    Remover
+                  </Button>
+                </div>
+              ) : (
+                <ObjectUploader
+                  onUploadComplete={(url) => setFileUrl(url)}
+                  allowedFileTypes={["*"]}
+                  note="Documentos, imágenes u otros archivos relevantes"
+                />
+              )}
+            </div>
+
             <div className="flex justify-end">
               <Button
                 onClick={handleSubmit}
-                disabled={submitAssignmentMutation.isPending || !content.trim()}
+                disabled={submitAssignmentMutation.isPending || (!content.trim() && !fileUrl)}
                 data-testid="button-submit-assignment"
               >
                 {submitAssignmentMutation.isPending ? "Entregando..." : "Entregar Tarea"}
