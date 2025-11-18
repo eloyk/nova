@@ -376,8 +376,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const totalProgress = userEnrollments.reduce((sum, e) => sum + e.progressPercentage, 0);
       const averageProgress = userEnrollments.length > 0 ? Math.round(totalProgress / userEnrollments.length) : 0;
 
+      // Calculate total hours from completed lessons in enrolled courses only
+      // Use a single JOIN query to get completed lessons filtered by enrolled course IDs
+      const enrolledCourseIds = userEnrollments.map(e => e.courseId);
+      const completedLessons = await storage.getCompletedLessonsByCourses(userId, enrolledCourseIds);
+      
+      // Sum up the duration of all completed lessons
+      const totalSeconds = completedLessons.reduce((sum, lesson) => {
+        return sum + (lesson.duration || 0);
+      }, 0);
+      
+      // Convert seconds to hours (don't round to preserve precision for small values)
+      const totalHours = totalSeconds / 3600;
+
       res.json({
-        totalHours: 0,
+        totalHours,
         averageProgress,
       });
     } catch (error) {

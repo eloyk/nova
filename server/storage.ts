@@ -34,7 +34,7 @@ import {
   type InsertAssignmentSubmission,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc, sql } from "drizzle-orm";
+import { eq, and, desc, sql, inArray } from "drizzle-orm";
 
 export interface IStorage {
   // User operations (required for Replit Auth)
@@ -58,6 +58,7 @@ export interface IStorage {
 
   // Lesson operations
   getLesson(id: string): Promise<Lesson | undefined>;
+  getLessonsByIds(ids: string[]): Promise<Lesson[]>;
   getLessonsByModule(moduleId: string): Promise<Lesson[]>;
   createLesson(lesson: InsertLesson): Promise<Lesson>;
   updateLesson(id: string, lesson: Partial<InsertLesson>): Promise<Lesson | undefined>;
@@ -74,6 +75,7 @@ export interface IStorage {
   // Lesson Progress operations
   getLessonProgress(userId: string, lessonId: string): Promise<LessonProgress | undefined>;
   getLessonProgressByUser(userId: string): Promise<LessonProgress[]>;
+  getCompletedLessonsByCourses(userId: string, courseIds: string[]): Promise<Lesson[]>;
   upsertLessonProgress(progress: InsertLessonProgress): Promise<LessonProgress>;
 
   // Quiz operations
@@ -118,7 +120,7 @@ export class DatabaseStorage implements IStorage {
     const [existingUser] = await db
       .select()
       .from(users)
-      .where(eq(users.email, userData.email));
+      .where(eq(users.email, userData.email as string));
 
     if (existingUser) {
       // Si existe, actualizar sus datos (excepto el ID)
@@ -218,6 +220,11 @@ export class DatabaseStorage implements IStorage {
     return lesson || undefined;
   }
 
+  async getLessonsByIds(ids: string[]): Promise<Lesson[]> {
+    if (ids.length === 0) return [];
+    return await db.select().from(lessons).where(inArray(lessons.id, ids));
+  }
+
   async getLessonsByModule(moduleId: string): Promise<Lesson[]> {
     return await db.select().from(lessons).where(eq(lessons.moduleId, moduleId)).orderBy(lessons.order);
   }
@@ -291,6 +298,35 @@ export class DatabaseStorage implements IStorage {
 
   async getLessonProgressByUser(userId: string): Promise<LessonProgress[]> {
     return await db.select().from(lessonProgress).where(eq(lessonProgress.userId, userId));
+  }
+
+  async getCompletedLessonsByCourses(userId: string, courseIds: string[]): Promise<Lesson[]> {
+    if (courseIds.length === 0) return [];
+    
+    const completedLessons = await db
+      .select({
+        id: lessons.id,
+        moduleId: lessons.moduleId,
+        title: lessons.title,
+        description: lessons.description,
+        videoUrl: lessons.videoUrl,
+        duration: lessons.duration,
+        order: lessons.order,
+        createdAt: lessons.createdAt,
+      })
+      .from(lessonProgress)
+      .innerJoin(lessons, eq(lessonProgress.lessonId, lessons.id))
+      .innerJoin(modules, eq(lessons.moduleId, modules.id))
+      .innerJoin(courses, eq(modules.courseId, courses.id))
+      .where(
+        and(
+          eq(lessonProgress.userId, userId),
+          eq(lessonProgress.completed, true),
+          inArray(courses.id, courseIds)
+        )
+      );
+    
+    return completedLessons;
   }
 
   async upsertLessonProgress(progressData: InsertLessonProgress): Promise<LessonProgress> {

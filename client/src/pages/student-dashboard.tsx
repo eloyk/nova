@@ -12,6 +12,11 @@ interface EnrollmentWithCourse extends Enrollment {
   course: Course;
 }
 
+interface StudentStats {
+  totalHours: number;
+  averageProgress: number;
+}
+
 export default function StudentDashboard() {
   const { user, isLoading: authLoading, isAuthenticated } = useAuth();
   const { toast } = useToast();
@@ -21,7 +26,7 @@ export default function StudentDashboard() {
     enabled: isAuthenticated,
   });
 
-  const { data: stats } = useQuery({
+  const { data: stats } = useQuery<StudentStats>({
     queryKey: ["/api/students/stats"],
     enabled: isAuthenticated,
   });
@@ -109,9 +114,38 @@ export default function StudentDashboard() {
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats?.totalHours || 0}</div>
+            <div className="text-2xl font-bold" data-testid="text-learning-hours">
+              {(() => {
+                const hours = stats?.totalHours || 0;
+                const totalSeconds = Math.round(hours * 3600);
+                const minutes = Math.floor(totalSeconds / 60);
+                const seconds = totalSeconds % 60;
+                
+                if (hours >= 1) {
+                  return `${hours.toFixed(1)}`;
+                } else if (minutes >= 1) {
+                  return `${minutes}`;
+                } else if (seconds > 0) {
+                  return `${seconds}`;
+                }
+                return "0";
+              })()}
+            </div>
             <p className="text-xs text-muted-foreground">
-              Este mes
+              {(() => {
+                const hours = stats?.totalHours || 0;
+                const totalSeconds = Math.round(hours * 3600);
+                const minutes = Math.floor(totalSeconds / 60);
+                
+                if (hours >= 1) {
+                  return "Horas este mes";
+                } else if (minutes >= 1) {
+                  return "Minutos este mes";
+                } else if (totalSeconds > 0) {
+                  return "Segundos este mes";
+                }
+                return "Este mes";
+              })()}
             </p>
           </CardContent>
         </Card>
