@@ -399,7 +399,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       const courseModules = await storage.getModulesByCourse(req.params.courseId);
       
-      const allLessons = [];
+      const allLessons: any[] = [];
       for (const module of courseModules) {
         const moduleLessons = await storage.getLessonsByModule(module.id);
         allLessons.push(...moduleLessons);
@@ -438,7 +438,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const courseModules = await storage.getModulesByCourse(module.courseId);
             
             // Get all lessons in the course
-            const allCourseLessons = [];
+            const allCourseLessons: any[] = [];
             for (const mod of courseModules) {
               const modLessons = await storage.getLessonsByModule(mod.id);
               allCourseLessons.push(...modLessons);
