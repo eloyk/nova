@@ -91,6 +91,10 @@ export default function CreateCourse() {
   });
 
   const onSubmit = (data: InsertCourse) => {
+    // Only allow submission when on step 3
+    if (step !== 3) {
+      return;
+    }
     createCourseMutation.mutate(data);
   };
 
