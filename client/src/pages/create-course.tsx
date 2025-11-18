@@ -90,12 +90,11 @@ export default function CreateCourse() {
     },
   });
 
-  const onSubmit = (data: InsertCourse) => {
-    // Only allow submission when on step 3
-    if (step !== 3) {
-      return;
-    }
-    createCourseMutation.mutate(data);
+  const handleCreateCourse = () => {
+    // Trigger form validation and submission
+    form.handleSubmit((data: InsertCourse) => {
+      createCourseMutation.mutate(data);
+    })();
   };
 
   if (authLoading) {
@@ -160,7 +159,7 @@ export default function CreateCourse() {
         </CardHeader>
         <CardContent>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <form onSubmit={(e) => e.preventDefault()} className="space-y-6">
               {step === 1 && (
                 <>
                   <FormField
@@ -329,7 +328,8 @@ export default function CreateCourse() {
                   </Button>
                 ) : (
                   <Button
-                    type="submit"
+                    type="button"
+                    onClick={handleCreateCourse}
                     disabled={createCourseMutation.isPending}
                     className="ml-auto"
                     data-testid="button-create-course"
