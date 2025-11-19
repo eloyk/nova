@@ -1,20 +1,17 @@
-// Automatically select the correct database client based on environment
-// - Replit: Uses Neon serverless with WebSocket support
-// - Docker/Local: Uses standard PostgreSQL client
+import { Pool, neonConfig } from '@neondatabase/serverless';
+import { drizzle } from 'drizzle-orm/neon-serverless';
+import ws from "ws";
+import * as schema from "@shared/schema";
 
-const isReplit = process.env.REPL_ID !== undefined;
+// Configure Neon to use WebSocket (works in both Replit and Docker)
+neonConfig.webSocketConstructor = ws;
 
-// Use dynamic import within an IIFE to handle async initialization
-const initDb = async () => {
-  if (isReplit) {
-    // Replit environment: Use Neon serverless with WebSocket
-    return await import('./db-neon.js');
-  } else {
-    // Docker/Local environment: Use standard PostgreSQL client
-    return await import('./db-postgres.js');
-  }
-};
+if (!process.env.DATABASE_URL) {
+  throw new Error(
+    "DATABASE_URL must be set. Did you forget to provision a database?",
+  );
+}
 
-const dbModule = await initDb();
-
-export const { pool, db } = dbModule;
+// Use Neon serverless with WebSocket in all environments
+export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+export const db = drizzle({ client: pool, schema });

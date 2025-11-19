@@ -8,26 +8,17 @@ Esta guía te ayudará a desplegar NovaLearn LMS usando Docker y Docker Compose.
 - Docker Compose instalado (versión 2.0 o superior)
 - Acceso a Keycloak (keycloak.vimcashcorp.com)
 
-## ⚙️ Arquitectura de Base de Datos Dual
+## ⚙️ Arquitectura de Base de Datos
 
-NovaLearn detecta automáticamente el ambiente y usa el cliente de base de datos óptimo:
+NovaLearn usa **Neon Database con WebSocket** en todos los ambientes:
 
-### 🔵 En Replit
-- Usa `@neondatabase/serverless` con **WebSocket support**
-- Conecta a Neon Database a través de WebSocket
-- Optimizado para ambientes serverless
+- ✅ **WebSocket Support** - Conexión optimizada con `@neondatabase/serverless`
+- ✅ **Funciona en Replit** - Conecta a Neon Database a través de WebSocket
+- ✅ **Funciona en Docker** - Compatible con Neon Database desde contenedores
+- ✅ **Alta disponibilidad** - Pooling de conexiones serverless
 
-### 🐳 En Docker/Local
-- Usa cliente PostgreSQL estándar (`pg`)
-- Conecta a PostgreSQL local o remoto vía TCP
-- Compatible con cualquier PostgreSQL
-
-### 🔄 Detección Automática
-La aplicación detecta si está en Replit verificando la variable `REPL_ID`:
-- **Si existe `REPL_ID`**: Usa Neon con WebSocket
-- **Si no existe `REPL_ID`**: Usa PostgreSQL estándar
-
-No necesitas configuración manual - todo es automático. Solo proporciona un `DATABASE_URL` válido.
+### 📝 Requisito Importante
+Debes usar una base de datos Neon (no PostgreSQL local) con un `DATABASE_URL` válido que apunte a tu instancia de Neon.
 
 ## 🚀 Inicio Rápido con Docker Compose
 
@@ -42,13 +33,8 @@ cp .env.example .env
 Edita el archivo `.env` con tus valores reales:
 
 ```env
-# Database (se configurará automáticamente con PostgreSQL local)
-DATABASE_URL=postgresql://novalearn:novalearn123@postgres:5432/novalearn
-PGHOST=postgres
-PGPORT=5432
-PGUSER=novalearn
-PGPASSWORD=novalearn123
-PGDATABASE=novalearn
+# Database (usa tu Neon Database URL)
+DATABASE_URL=postgresql://user:password@ep-xxxx.us-east-2.aws.neon.tech/novalearn?sslmode=require
 
 # Session Secret (genera uno seguro)
 SESSION_SECRET=tu-clave-secreta-muy-segura-cambiala
@@ -78,7 +64,7 @@ docker-compose logs -f novalearn
 **¡Las migraciones se ejecutan automáticamente!** 🎉
 
 Cuando el contenedor inicia, el script `docker-entrypoint.sh`:
-1. ✅ Espera a que PostgreSQL esté listo
+1. ✅ Espera a que Neon Database esté listo
 2. ✅ Ejecuta automáticamente las migraciones (`npm run db:push`)
 3. ✅ Inicia la aplicación
 
@@ -86,9 +72,10 @@ No necesitas ejecutar comandos manuales.
 
 La aplicación estará disponible en:
 - **NovaLearn LMS**: http://localhost:5000
-- **PostgreSQL**: localhost:5432
 
-> **💡 Nota**: El primer inicio puede tomar 30-60 segundos mientras se crean las tablas de la base de datos.
+> **💡 Nota**: El primer inicio puede tomar 30-60 segundos mientras se crean las tablas en tu base de datos Neon.
+
+> **⚠️ Importante**: No uses PostgreSQL local. La aplicación requiere una base de datos Neon con acceso WebSocket.
 
 ## 🏗️ Construcción Manual con Dockerfile
 
@@ -127,14 +114,13 @@ docker-compose down -v
 # Reconstruir las imágenes
 docker-compose build --no-cache
 
-# Ver logs de un servicio específico
+# Ver logs de la aplicación
 docker-compose logs -f novalearn
-docker-compose logs -f postgres
 
 # Acceder al shell del contenedor
 docker-compose exec novalearn sh
 
-# Reiniciar un servicio
+# Reiniciar la aplicación
 docker-compose restart novalearn
 ```
 
@@ -162,10 +148,11 @@ docker rmi novalearn-lms:latest
 
 ## 📦 Estructura de Volúmenes
 
-El docker-compose crea los siguientes volúmenes:
+El docker-compose monta los siguientes volúmenes:
 
-- `postgres_data`: Datos persistentes de PostgreSQL
 - `./videos`: Directorio para almacenar videos de lecciones (montado desde el host)
+
+> **Nota**: Los datos de la base de datos se almacenan en Neon (en la nube), no en volúmenes locales.
 
 ## 🔐 Seguridad
 
@@ -187,20 +174,10 @@ node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
 
 ### Consideraciones Importantes
 
-1. **Base de Datos Externa**: En producción, usa una base de datos externa (como Neon) en lugar del PostgreSQL del docker-compose:
-
-```yaml
-# docker-compose.yml (modificado para producción)
-services:
-  novalearn:
-    build: .
-    ports:
-      - "5000:5000"
-    environment:
-      - DATABASE_URL=postgresql://user:pass@neon.tech/dbname
-      # ... otras variables
-    # Eliminar la sección depends_on y el servicio postgres
-```
+1. **Base de Datos**: La aplicación ya está configurada para usar Neon Database, que es apto para producción. Asegúrate de:
+   - Usar un plan de Neon apropiado para producción
+   - Configurar backups automáticos en Neon
+   - Monitorear el uso de conexiones
 
 2. **SSL/TLS**: Usa un proxy reverso (nginx, Traefik) para manejar HTTPS:
 
@@ -229,7 +206,7 @@ server {
 4. **Escalabilidad**: Para alta disponibilidad, considera usar:
    - Kubernetes para orquestación
    - Load balancers para distribuir tráfico
-   - Base de datos replicada
+   - Neon Database con alta disponibilidad habilitada
 
 ## 🐛 Resolución de Problemas
 
@@ -245,15 +222,14 @@ docker-compose config
 
 ### Error de conexión a la base de datos
 
+Verifica que:
+1. Tu `DATABASE_URL` en `.env` sea correcta y apunte a tu instancia de Neon
+2. La base de datos Neon esté activa y accesible
+3. El `sslmode=require` esté incluido en la URL de conexión
+
 ```bash
-# Verificar que PostgreSQL esté ejecutándose
-docker-compose ps postgres
-
-# Ver logs de PostgreSQL
-docker-compose logs postgres
-
-# Reiniciar el servicio de base de datos
-docker-compose restart postgres
+# Ver logs de la aplicación para identificar el error
+docker-compose logs novalearn
 ```
 
 ### Cambios en el código no se reflejan
@@ -290,8 +266,7 @@ docker-compose build novalearn
 # 4. Iniciar el servicio actualizado
 docker-compose up -d novalearn
 
-# 5. Ejecutar migraciones si hay cambios en la BD
-docker-compose exec novalearn npm run db:push
+# Las migraciones se ejecutan automáticamente al iniciar
 ```
 
 ## 📝 Notas Adicionales
