@@ -1,10 +1,9 @@
-import { Pool, neonConfig } from '@neondatabase/serverless';
-import { drizzle } from 'drizzle-orm/neon-serverless';
-import ws from "ws";
+import { Pool as PgPool } from 'pg';
+import { Pool as NeonPool, neonConfig } from '@neondatabase/serverless';
+import { drizzle as drizzleNeon } from 'drizzle-orm/neon-serverless';
+import { drizzle as drizzlePg } from 'drizzle-orm/node-postgres';
+import ws from 'ws';
 import * as schema from "@shared/schema";
-
-// Configure Neon to use WebSocket (works in both Replit and Docker)
-neonConfig.webSocketConstructor = ws;
 
 if (!process.env.DATABASE_URL) {
   throw new Error(
@@ -12,6 +11,21 @@ if (!process.env.DATABASE_URL) {
   );
 }
 
-// Use Neon serverless with WebSocket in all environments
-export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-export const db = drizzle({ client: pool, schema });
+// Environment detection: Use Neon with WebSocket in Replit, standard pg in Docker
+const isReplit = !!process.env.REPL_ID;
+
+let pool: any;
+let db: any;
+
+if (isReplit) {
+  // Replit: Use Neon serverless with WebSocket support
+  neonConfig.webSocketConstructor = ws;
+  pool = new NeonPool({ connectionString: process.env.DATABASE_URL });
+  db = drizzleNeon({ client: pool, schema });
+} else {
+  // Docker/Local: Use standard PostgreSQL client
+  pool = new PgPool({ connectionString: process.env.DATABASE_URL });
+  db = drizzlePg({ client: pool, schema });
+}
+
+export { pool, db };

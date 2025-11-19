@@ -7,8 +7,7 @@ services:
       - "5000:5000"
     environment:
       - NODE_ENV=production
-      # Use Neon Database URL from .env
-      - DATABASE_URL=${DATABASE_URL}
+      - DATABASE_URL=postgresql://${PGUSER:-novalearn}:${PGPASSWORD:-novalearn123}@postgres:5432/${PGDATABASE:-novalearn}
       - SESSION_SECRET=${SESSION_SECRET}
       - KEYCLOAK_URL=${KEYCLOAK_URL:-https://keycloak.vimcashcorp.com}
       - KEYCLOAK_REALM=${KEYCLOAK_REALM:-nova-learn}
@@ -23,3 +22,25 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+    depends_on:
+      - postgres
+
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_USER=${PGUSER:-novalearn}
+      - POSTGRES_PASSWORD=${PGPASSWORD:-novalearn123}
+      - POSTGRES_DB=${PGDATABASE:-novalearn}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${PGUSER:-novalearn}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
