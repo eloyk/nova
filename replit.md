@@ -84,9 +84,12 @@ Preferred communication style: Simple, everyday language.
 - **sessions** - Server-side session storage (sid, sess, expire)
 
 **Database Connection**
-- **Neon Serverless PostgreSQL** - WebSocket-based connection pooling
-- **Connection Pool** - Managed via `@neondatabase/serverless` with ws transport
-- **Migration Strategy** - Drizzle Kit for schema migrations to `./migrations` directory
+- **Dual Database Support** - Automatic detection of environment
+  - **Replit**: Neon Serverless PostgreSQL with WebSocket support (`@neondatabase/serverless`)
+  - **Docker**: Standard PostgreSQL client (`pg`)
+- **Connection Pool** - Managed via appropriate client based on environment
+- **Migration Strategy** - Drizzle Kit for schema migrations
+- **Environment Detection** - Uses `REPL_ID` environment variable to determine client
 
 ### File Storage Architecture
 

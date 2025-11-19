@@ -8,15 +8,26 @@ Esta guía te ayudará a desplegar NovaLearn LMS usando Docker y Docker Compose.
 - Docker Compose instalado (versión 2.0 o superior)
 - Acceso a Keycloak (keycloak.vimcashcorp.com)
 
-## ⚙️ Arquitectura de Base de Datos
+## ⚙️ Arquitectura de Base de Datos Dual
 
-NovaLearn usa el cliente PostgreSQL estándar (`pg`) que funciona en cualquier ambiente:
+NovaLearn detecta automáticamente el ambiente y usa el cliente de base de datos óptimo:
 
-- ✅ Compatible con Neon Database (Replit)
-- ✅ Compatible con PostgreSQL local (Docker)
-- ✅ Compatible con cualquier base de datos PostgreSQL
+### 🔵 En Replit
+- Usa `@neondatabase/serverless` con **WebSocket support**
+- Conecta a Neon Database a través de WebSocket
+- Optimizado para ambientes serverless
 
-No necesitas configuración especial - solo proporciona un `DATABASE_URL` válido.
+### 🐳 En Docker/Local
+- Usa cliente PostgreSQL estándar (`pg`)
+- Conecta a PostgreSQL local o remoto vía TCP
+- Compatible con cualquier PostgreSQL
+
+### 🔄 Detección Automática
+La aplicación detecta si está en Replit verificando la variable `REPL_ID`:
+- **Si existe `REPL_ID`**: Usa Neon con WebSocket
+- **Si no existe `REPL_ID`**: Usa PostgreSQL estándar
+
+No necesitas configuración manual - todo es automático. Solo proporciona un `DATABASE_URL` válido.
 
 ## 🚀 Inicio Rápido con Docker Compose
 

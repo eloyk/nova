@@ -1,13 +1,20 @@
-import { Pool } from 'pg';
-import { drizzle } from 'drizzle-orm/node-postgres';
-import * as schema from "@shared/schema";
+// Automatically select the correct database client based on environment
+// - Replit: Uses Neon serverless with WebSocket support
+// - Docker/Local: Uses standard PostgreSQL client
 
-if (!process.env.DATABASE_URL) {
-  throw new Error(
-    "DATABASE_URL must be set. Did you forget to provision a database?",
-  );
-}
+const isReplit = process.env.REPL_ID !== undefined;
 
-// Use standard PostgreSQL client (works in both Replit and Docker)
-export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-export const db = drizzle({ client: pool, schema });
+// Use dynamic import within an IIFE to handle async initialization
+const initDb = async () => {
+  if (isReplit) {
+    // Replit environment: Use Neon serverless with WebSocket
+    return await import('./db-neon.js');
+  } else {
+    // Docker/Local environment: Use standard PostgreSQL client
+    return await import('./db-postgres.js');
+  }
+};
+
+const dbModule = await initDb();
+
+export const { pool, db } = dbModule;
