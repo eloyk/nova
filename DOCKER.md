@@ -49,33 +49,35 @@ KEYCLOAK_CLIENT_ID=nova-backend
 KEYCLOAK_CLIENT_SECRET=tu-secreto-de-keycloak
 ```
 
-### 2. Construir y Ejecutar
+### 2. Iniciar con un Solo Comando
 
 ```bash
 # Construir e iniciar todos los servicios
 docker-compose up -d
 
-# Ver los logs
-docker-compose logs -f
+# Las migraciones se ejecutan automáticamente ✨
+# No necesitas ningún paso adicional!
 
-# Verificar el estado
-docker-compose ps
+# Ver los logs para confirmar
+docker-compose logs -f novalearn
 ```
 
-### 3. Inicializar Base de Datos
+### 3. Acceder a la Aplicación
 
-```bash
-# Ejecutar migraciones de Drizzle (crea las tablas de la aplicación)
-docker-compose exec novalearn npm run db:push
+**¡Las migraciones se ejecutan automáticamente!** 🎉
 
-# Nota: La tabla 'sessions' se crea automáticamente al iniciar la aplicación
-```
+Cuando el contenedor inicia, el script `docker-entrypoint.sh`:
+1. ✅ Espera a que PostgreSQL esté listo
+2. ✅ Ejecuta automáticamente las migraciones (`npm run db:push`)
+3. ✅ Inicia la aplicación
 
-### 4. Acceder a la Aplicación
+No necesitas ejecutar comandos manuales.
 
 La aplicación estará disponible en:
 - **NovaLearn LMS**: http://localhost:5000
 - **PostgreSQL**: localhost:5432
+
+> **💡 Nota**: El primer inicio puede tomar 30-60 segundos mientras se crean las tablas de la base de datos.
 
 ## 🏗️ Construcción Manual con Dockerfile
 
