@@ -22,9 +22,9 @@ FROM node:20-alpine
 # Set working directory
 WORKDIR /app
 
-# Install production dependencies only
+# Install all dependencies (including dev dependencies needed by vite.ts)
 COPY package*.json ./
-RUN npm ci --only=production
+RUN npm ci
 
 # Copy built assets from builder
 COPY --from=builder /app/dist ./dist
