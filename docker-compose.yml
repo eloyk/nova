@@ -9,6 +9,9 @@ services:
       - NODE_ENV=production
       - DATABASE_URL=${DATABASE_URL}
       - SESSION_SECRET=${SESSION_SECRET}
+      - KEYCLOAK_URL=${KEYCLOAK_URL:-https://keycloak.vimcashcorp.com}
+      - KEYCLOAK_REALM=${KEYCLOAK_REALM:-nova-learn}
+      - KEYCLOAK_CLIENT_ID=${KEYCLOAK_CLIENT_ID:-nova-backend}
       - KEYCLOAK_CLIENT_SECRET=${KEYCLOAK_CLIENT_SECRET}
     volumes:
       - ./videos:/app/videos

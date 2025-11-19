@@ -32,7 +32,10 @@ PGDATABASE=novalearn
 # Session Secret (genera uno seguro)
 SESSION_SECRET=tu-clave-secreta-muy-segura-cambiala
 
-# Keycloak
+# Keycloak Configuration
+KEYCLOAK_URL=https://keycloak.vimcashcorp.com
+KEYCLOAK_REALM=nova-learn
+KEYCLOAK_CLIENT_ID=nova-backend
 KEYCLOAK_CLIENT_SECRET=tu-secreto-de-keycloak
 ```
 
