@@ -16,6 +16,7 @@ const PgSession = connectPgSimple(session);
 const sessionStore = new PgSession({
   pool,
   tableName: "sessions",
+  createTableIfMissing: true, // Auto-create sessions table if it doesn't exist
 });
 
 app.use(

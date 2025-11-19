@@ -62,11 +62,13 @@ docker-compose logs -f
 docker-compose ps
 ```
 
-### 3. Ejecutar Migraciones de Base de Datos
+### 3. Inicializar Base de Datos
 
 ```bash
-# Una vez que los contenedores estén ejecutándose
+# Ejecutar migraciones de Drizzle (crea las tablas de la aplicación)
 docker-compose exec novalearn npm run db:push
+
+# Nota: La tabla 'sessions' se crea automáticamente al iniciar la aplicación
 ```
 
 ### 4. Acceder a la Aplicación
