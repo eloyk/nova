@@ -7,7 +7,8 @@ services:
       - "5000:5000"
     environment:
       - NODE_ENV=production
-      - DATABASE_URL=${DATABASE_URL}
+      # Use local postgres service or override with .env
+      - DATABASE_URL=${DATABASE_URL:-postgresql://novalearn:novalearn123@postgres:5432/novalearn}
       - SESSION_SECRET=${SESSION_SECRET}
       - KEYCLOAK_URL=${KEYCLOAK_URL:-https://keycloak.vimcashcorp.com}
       - KEYCLOAK_REALM=${KEYCLOAK_REALM:-nova-learn}
