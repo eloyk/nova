@@ -37,7 +37,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
     
     // Redirigir a Keycloak logout con redirect de vuelta a la app
-    const logoutUrl = `https://keycloak.vimcashcorp.com/realms/nova-learn/protocol/openid-connect/logout?post_logout_redirect_uri=${encodeURIComponent(redirectUri)}&client_id=nova-backend`;
+    const logoutUrl = `${process.env.KEYCLOAK_URL}/realms/${process.env.KEYCLOAK_REALM}/protocol/openid-connect/logout?post_logout_redirect_uri=${encodeURIComponent(redirectUri)}&client_id=${process.env.KEYCLOAK_CLIENT_ID}`;
     res.redirect(logoutUrl);
   });
 
