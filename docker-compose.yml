@@ -7,11 +7,11 @@ services:
       - "5000:5000"
     environment:
       - NODE_ENV=production
-      - DATABASE_URL=postgresql://${PGUSER:-novalearn}:${PGPASSWORD:-novalearn123}@postgres:5432/${PGDATABASE:-novalearn}
+      - DATABASE_URL=postgresql://${PGUSER}:${PGPASSWORD}@postgres:5432/${PGDATABASE}
       - SESSION_SECRET=${SESSION_SECRET}
-      - KEYCLOAK_URL=${KEYCLOAK_URL:-https://keycloak.vimcashcorp.com}
-      - KEYCLOAK_REALM=${KEYCLOAK_REALM:-nova-learn}
-      - KEYCLOAK_CLIENT_ID=${KEYCLOAK_CLIENT_ID:-nova-backend}
+      - KEYCLOAK_URL=${KEYCLOAK_URL}
+      - KEYCLOAK_REALM=${KEYCLOAK_REALM}
+      - KEYCLOAK_CLIENT_ID=${KEYCLOAK_CLIENT_ID}
       - KEYCLOAK_CLIENT_SECRET=${KEYCLOAK_CLIENT_SECRET}
     volumes:
       - ./videos:/app/videos
@@ -28,9 +28,9 @@ services:
   postgres:
     image: postgres:15-alpine
     environment:
-      - POSTGRES_USER=${PGUSER:-novalearn}
-      - POSTGRES_PASSWORD=${PGPASSWORD:-novalearn123}
-      - POSTGRES_DB=${PGDATABASE:-novalearn}
+      - POSTGRES_USER=${PGUSER}
+      - POSTGRES_PASSWORD=${PGPASSWORD}
+      - POSTGRES_DB=${PGDATABASE}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:

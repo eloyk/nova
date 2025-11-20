@@ -19,10 +19,15 @@ const sessionStore = new PgSession({
   createTableIfMissing: true, // Auto-create sessions table if it doesn't exist
 });
 
+// Validar que SESSION_SECRET esté presente
+if (!process.env.SESSION_SECRET) {
+  throw new Error('SESSION_SECRET environment variable is required');
+}
+
 app.use(
   session({
     store: sessionStore,
-    secret: process.env.SESSION_SECRET || "nova-learn-secret-key",
+    secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
     cookie: {

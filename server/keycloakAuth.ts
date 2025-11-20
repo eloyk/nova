@@ -20,15 +20,29 @@ interface KeycloakRequest extends Request {
   };
 }
 
-// Configuración de Keycloak
+// Validar que todas las variables de entorno requeridas estén presentes
+if (!process.env.KEYCLOAK_URL) {
+  throw new Error('KEYCLOAK_URL environment variable is required');
+}
+if (!process.env.KEYCLOAK_REALM) {
+  throw new Error('KEYCLOAK_REALM environment variable is required');
+}
+if (!process.env.KEYCLOAK_CLIENT_ID) {
+  throw new Error('KEYCLOAK_CLIENT_ID environment variable is required');
+}
+if (!process.env.KEYCLOAK_CLIENT_SECRET) {
+  throw new Error('KEYCLOAK_CLIENT_SECRET environment variable is required');
+}
+
+// Configuración de Keycloak - TODO cargado desde variables de entorno
 const keycloakConfig = {
-  realm: 'nova-learn',
-  'auth-server-url': 'https://keycloak.vimcashcorp.com',
+  realm: process.env.KEYCLOAK_REALM,
+  'auth-server-url': process.env.KEYCLOAK_URL,
   'ssl-required': 'external',
-  resource: 'nova-backend',
+  resource: process.env.KEYCLOAK_CLIENT_ID,
   'confidential-port': 0,
   credentials: {
-    secret: process.env.KEYCLOAK_CLIENT_SECRET || '',
+    secret: process.env.KEYCLOAK_CLIENT_SECRET,
   },
   'bearer-only': false, // Permitir flujo de autenticación web
 };
