@@ -4,18 +4,18 @@
 
 ## 1. PORTADA Y PRESENTACIÓN
 
-**Nombre de la Institución:** Universidad Nacional de Tecnología
+**Nombre de la Institución:** Unicaribe
 
-**Asignatura:** Desarrollo de Software II
+**Asignatura:** PASANTÍA - PRÁCTICA DE INGENIERÍA DE SOFTWARE
 
 **Título del Proyecto:** NovaLearn LMS - Sistema de Gestión de Aprendizaje
 
 **Integrantes:**
-- [Nombre del Estudiante 1]
-- [Nombre del Estudiante 2]
-- [Nombre del Estudiante 3]
+- Fabian Castro
+- Raudy Abreu
+- Eloy Castillo
 
-**Profesor(a):** [Nombre del Profesor]
+**Profesor(a):** PELAGIO SORIANO
 
 **Fecha de Presentación:** Noviembre 2025
 
