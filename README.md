@@ -13,6 +13,7 @@
 **Integrantes:**
 - Fabian Castro
 - Raudy Abreu
+- Frandy Pavel agramonte
 - Eloy Castillo
 
 **Profesor(a):** PELAGIO SORIANO
